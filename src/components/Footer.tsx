@@ -109,8 +109,8 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/#coaches" className="hover:text-white transition-colors">
-                  Profil Coach & Pelatih
+                <Link href="/member" className="hover:text-white transition-colors flex items-center gap-1 text-amber-400">
+                  Portal Member (Login/Akun)
                 </Link>
               </li>
               <li>

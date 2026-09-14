@@ -70,7 +70,7 @@ export async function POST(req: Request) {
           <tr>
             <td style="padding: 32px 32px 20px 32px; text-align: center; background: linear-gradient(180deg, #1f1414 0%, #121316 100%); border-bottom: 1px solid #27272a;">
               <div style="display: inline-block; padding: 6px 16px; background-color: rgba(186, 45, 29, 0.15); border: 1px solid rgba(186, 45, 29, 0.4); border-radius: 9999px; color: #d63725; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;">
-                11 FIGHT CAMP BATAM
+                11 FIGHT CAMP PONTIANAK
               </div>
               <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; text-transform: uppercase;">
                 PEMULIHAN KATA SANDI
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
           <tr>
             <td style="padding: 24px 32px; background-color: #090a0c; border-top: 1px solid #27272a; text-align: center;">
               <p style="margin: 0; font-size: 12px; color: #52525b;">
-                © 11 Fight Camp Batam • Komplek Grand Niaga Mas, Batam Center
+                © 11 Fight Camp • Pontianak, Kalimantan Barat
               </p>
               <p style="margin: 4px 0 0 0; font-size: 11px; color: #3f3f46;">
                 Email otomatis dari sistem keamanan portal member 11 Fight Camp
