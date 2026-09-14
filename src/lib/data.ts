@@ -121,14 +121,14 @@ export const INITIAL_CLASSES: ClassItem[] = [
 
 export const INITIAL_TRAINERS: Trainer[] = [
   {
-    id: 'trainer-kevin',
-    name: 'Coach Kevin',
-    role: 'Head Striking Coach',
-    specialty: 'Muay Thai & Western Boxing',
-    bio: 'Pelatih kepala striking dengan rekam jejak petarung dan pengalaman membimbing ratusan murid.',
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
+    id: 'trainer-mahaji',
+    name: 'Coach Mahaji Arbain Wicaksana',
+    role: 'Head Coach',
+    specialty: 'Muay Thai, Boxing, Conditioning, & MMA Striking',
+    bio: 'Head Coach resmi 11th Universe MMA / 11 Fight Camp Pontianak. Memimpin kurikulum striking, tinju, pengondisian fisik, dan teknik MMA.',
+    photoUrl: '/coach-mahaji.webp',
     instagram: '11fightcamp',
-    achievements: ['Head Striking Coach 11FC', 'Regional Fight Champion'],
+    achievements: ['Head Coach 11th Universe MMA', 'Muay Thai & Boxing Lead', 'MMA Striking & Conditioning Lead'],
   },
   {
     id: 'trainer-david',
@@ -182,42 +182,42 @@ export const INITIAL_SCHEDULES: Schedule[] = [
   { id: 'sch-sat-0700-hyrox', classId: 'class-hyrox', trainerId: 'trainer-aris', dayOfWeek: 6, startTime: '07:00', endTime: '08:15', maxCapacity: 16, price: 75000, isActive: true },
 
   // --- 08.30 (SENIN - SABTU): STRIKING ---
-  { id: 'sch-mon-0830-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 1, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-tue-0830-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 2, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-wed-0830-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 3, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-thu-0830-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 4, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-fri-0830-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 5, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-sat-0830-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 6, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-mon-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 1, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-tue-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 2, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-wed-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 3, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-thu-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 4, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-fri-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 5, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-sat-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 6, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
 
   // --- 10.00 (SENIN - SABTU): STRIKING + YOGA IF (SENIN) + BJJ KIDS (MINGGU) ---
-  { id: 'sch-mon-1000-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 1, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-mon-1000-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 1, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
   { id: 'sch-mon-1000-yoga-if', classId: 'class-yoga-if', trainerId: 'trainer-sarah', dayOfWeek: 1, startTime: '10:00', endTime: '11:15', maxCapacity: 12, price: 70000, isActive: true },
-  { id: 'sch-tue-1000-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 2, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-wed-1000-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 3, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-thu-1000-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 4, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-fri-1000-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 5, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
-  { id: 'sch-sat-1000-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 6, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-tue-1000-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 2, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-wed-1000-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 3, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-thu-1000-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 4, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-fri-1000-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 5, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-sat-1000-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 6, startTime: '10:00', endTime: '11:15', maxCapacity: 15, price: 75000, isActive: true },
   { id: 'sch-sun-1000-bjj-kids', classId: 'class-bjj-kids', trainerId: 'trainer-david', dayOfWeek: 0, startTime: '10:00', endTime: '11:15', maxCapacity: 12, price: 65000, isActive: true },
 
   // --- SABTU 15.00: MUAYKIDS ---
-  { id: 'sch-sat-1500-muaykids', classId: 'class-muaykids', trainerId: 'trainer-kevin', dayOfWeek: 6, startTime: '15:00', endTime: '16:00', maxCapacity: 12, price: 65000, isActive: true },
+  { id: 'sch-sat-1500-muaykids', classId: 'class-muaykids', trainerId: 'trainer-mahaji', dayOfWeek: 6, startTime: '15:00', endTime: '16:00', maxCapacity: 12, price: 65000, isActive: true },
 
   // --- 16.00 (SENIN - MINGGU): STRIKING ---
-  { id: 'sch-mon-1600-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 1, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-tue-1600-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 2, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-wed-1600-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 3, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-thu-1600-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 4, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-fri-1600-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 5, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-sat-1600-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 6, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-sun-1600-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 0, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-mon-1600-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 1, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-tue-1600-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 2, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-wed-1600-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 3, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-thu-1600-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 4, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-fri-1600-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 5, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-sat-1600-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 6, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-sun-1600-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 0, startTime: '16:00', endTime: '17:15', maxCapacity: 16, price: 75000, isActive: true },
 
   // --- 17.00 (SENIN - SABTU): STRIKING ---
-  { id: 'sch-mon-1700-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 1, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-tue-1700-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 2, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-wed-1700-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 3, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-thu-1700-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 4, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-fri-1700-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 5, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
-  { id: 'sch-sat-1700-striking', classId: 'class-striking', trainerId: 'trainer-kevin', dayOfWeek: 6, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-mon-1700-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 1, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-tue-1700-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 2, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-wed-1700-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 3, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-thu-1700-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 4, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-fri-1700-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 5, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
+  { id: 'sch-sat-1700-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 6, startTime: '17:00', endTime: '18:15', maxCapacity: 16, price: 75000, isActive: true },
 
   // --- 18.30: YOGA HATHA (SENIN, JUMAT) & ZUMBA (KAMIS) ---
   { id: 'sch-mon-1830-yoga-hatha', classId: 'class-yoga-hatha', trainerId: 'trainer-sarah', dayOfWeek: 1, startTime: '18:30', endTime: '19:45', maxCapacity: 14, price: 70000, isActive: true },
