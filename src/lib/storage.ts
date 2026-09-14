@@ -446,28 +446,55 @@ export async function updateMemberStatus(
   paymentStatus: 'pending' | 'paid' | 'cancelled',
   status?: 'active' | 'pending' | 'expired' | 'inactive'
 ): Promise<boolean> {
+  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+  const member = current.find((m) => m.id === id);
+
   const finalStatus = status || (paymentStatus === 'paid' ? 'active' : paymentStatus === 'cancelled' ? 'inactive' : 'pending');
+
+  let updateFields: Partial<Member> = {
+    paymentStatus,
+    status: finalStatus,
+  };
+
+  // If newly marked as paid, start the active countdown from TODAY
+  if (paymentStatus === 'paid') {
+    const now = new Date();
+    const startFormatted = now.toISOString().split('T')[0];
+    const duration = member?.planId === 'pack-10' || member?.planId === 'private-pack' ? 45 : 30;
+    const end = new Date(now);
+    end.setDate(end.getDate() + duration);
+    const endFormatted = end.toISOString().split('T')[0];
+
+    updateFields.startDate = startFormatted;
+    updateFields.endDate = endFormatted;
+  }
 
   if (isSupabaseConfigured && supabase) {
     try {
+      const payload: any = {
+        payment_status: updateFields.paymentStatus,
+        status: updateFields.status,
+      };
+      if (updateFields.startDate) payload.start_date = updateFields.startDate;
+      if (updateFields.endDate) payload.end_date = updateFields.endDate;
+
       const { error } = await supabase
         .from('members')
-        .update({
-          payment_status: paymentStatus,
-          status: finalStatus,
-        })
+        .update(payload)
         .eq('id', id);
 
-      if (!error) return true;
+      if (!error) {
+        // Also update local storage cache
+        const updated = current.map((m) => (m.id === id ? { ...m, ...updateFields } : m));
+        setLocalItem(STORAGE_KEYS.MEMBERS, updated);
+        return true;
+      }
     } catch (err) {
       console.warn('Supabase update member status error:', err);
     }
   }
 
-  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
-  const updated = current.map((m) =>
-    m.id === id ? { ...m, paymentStatus, status: finalStatus } : m
-  );
+  const updated = current.map((m) => (m.id === id ? { ...m, ...updateFields } : m));
   setLocalItem(STORAGE_KEYS.MEMBERS, updated);
   return true;
 }
