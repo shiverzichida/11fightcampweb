@@ -54,7 +54,10 @@ export default function Pricing() {
 
   const handleSubmitRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlan || !fullName.trim() || !phone.trim()) return;
+    if (!selectedPlan || !fullName.trim() || !phone.trim() || !email.trim()) {
+      alert('Harap lengkapi semua data: Nama, No. WhatsApp, dan Email.');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -306,7 +309,7 @@ export default function Pricing() {
 
                   <div>
                     <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                      Email (Opsional)
+                      Email (Wajib untuk Pemulihan Sandi) *
                     </label>
                     <input
                       type="email"
@@ -314,6 +317,7 @@ export default function Pricing() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-[#ba2d1d]"
+                      required
                     />
                   </div>
                 </div>

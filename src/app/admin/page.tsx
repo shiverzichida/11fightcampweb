@@ -205,12 +205,17 @@ export default function AdminPage() {
       durationDays = 30;
     }
 
+    if (!memberName.trim() || !memberPhone.trim() || !memberEmail.trim()) {
+      alert('Harap lengkapi Nama, No. WhatsApp, dan Email.');
+      return;
+    }
+
     setIsSavingMember(true);
     try {
       await saveNewMember({
         name: memberName,
         phone: memberPhone,
-        email: memberEmail || undefined,
+        email: memberEmail.trim(),
         planId: selectedPlan.id,
         planTitle: selectedPlan.title,
         price: selectedPlan.price,
@@ -1033,7 +1038,7 @@ export default function AdminPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                      Email (Opsional)
+                      Email Member (Wajib) *
                     </label>
                     <input
                       type="email"
@@ -1041,6 +1046,7 @@ export default function AdminPage() {
                       value={memberEmail}
                       onChange={(e) => setMemberEmail(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                      required
                     />
                   </div>
                 </div>

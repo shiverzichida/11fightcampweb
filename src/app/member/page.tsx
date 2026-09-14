@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Member, Booking, MembershipPlan } from '@/lib/types';
-import { fetchMembers, fetchBookings, saveNewMember } from '@/lib/storage';
+import { fetchMembers, fetchBookings, saveNewMember, resetMemberPassword } from '@/lib/storage';
 import { GYM_INFO, MEMBERSHIP_PLANS } from '@/lib/data';
 import {
   User,
@@ -30,16 +30,32 @@ import {
   EyeOff,
   Copy,
   Check,
+  Mail,
+  KeyRound,
+  HelpCircle,
+  Send,
 } from 'lucide-react';
 
 export default function MemberPortalPage() {
-  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  const [authTab, setAuthTab] = useState<'login' | 'register' | 'forgot'>('login');
   
   // Login State
-  const [loginIdentifier, setLoginIdentifier] = useState(''); // WhatsApp or Username
+  const [loginIdentifier, setLoginIdentifier] = useState(''); // WhatsApp, Username, or Email
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+
+  // Forgot Password State
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotStep, setForgotStep] = useState<'input_email' | 'input_new_pass' | 'success'>('input_email');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccessMsg, setForgotSuccessMsg] = useState('');
 
   // Register State
   const [regName, setRegName] = useState('');
@@ -157,8 +173,8 @@ export default function MemberPortalPage() {
   // 2. Handle Member Registration
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName.trim() || !regPhone.trim() || !regPassword.trim()) {
-      alert('Harap lengkapi Nama, No. WhatsApp, dan Password.');
+    if (!regName.trim() || !regPhone.trim() || !regPassword.trim() || !regEmail.trim()) {
+      alert('Harap lengkapi Nama Lengkap, No. WhatsApp, Email (Wajib), dan Password.');
       return;
     }
 
@@ -184,7 +200,7 @@ export default function MemberPortalPage() {
         phone: regPhone,
         username: regUsername.trim() || regPhone.trim(),
         password: regPassword.trim(),
-        email: regEmail || undefined,
+        email: regEmail.trim(),
         planId: selectedPlan.id,
         planTitle: selectedPlan.title,
         price: selectedPlan.price,
@@ -211,6 +227,86 @@ export default function MemberPortalPage() {
     }
   };
 
+  // 3. Handle Forgot Password Flow
+  const handleRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccessMsg('');
+
+    const targetEmail = forgotEmail.trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setForgotError('Harap masukkan format alamat email yang valid.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const found = members.find(
+        (m) => m.email && m.email.toLowerCase().trim() === targetEmail
+      );
+
+      if (!found) {
+        setForgotError(
+          'Email tidak ditemukan di data member. Pastikan email sama dengan yang didaftarkan atau hubungi admin.'
+        );
+        setForgotLoading(false);
+        return;
+      }
+
+      // Generate verification code
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(code);
+      setForgotOtp(code);
+      setForgotStep('input_new_pass');
+      setForgotSuccessMsg(`Akun terverifikasi untuk ${targetEmail}. Silakan tentukan kata sandi baru Anda.`);
+    } catch (err) {
+      console.error('Reset error:', err);
+      setForgotError('Gagal memproses permintaan reset password.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleConfirmReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+
+    if (!newPassword || newPassword.length < 4) {
+      setForgotError('Password baru minimal harus 4 karakter.');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setForgotError('Konfirmasi password tidak cocok.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await resetMemberPassword(forgotEmail, newPassword);
+      if (res.success && res.member) {
+        setForgotStep('success');
+        setForgotSuccessMsg('Kata sandi berhasil diperbarui! Anda kini otomatis masuk ke akun Anda.');
+        
+        setActiveMember(res.member);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('11fc_logged_member_id', res.member.id);
+          localStorage.setItem('11fc_prefill_name', res.member.name);
+          localStorage.setItem('11fc_prefill_phone', res.member.phone);
+        }
+        matchMemberBookings(res.member, bookings);
+        await loadData();
+      } else {
+        setForgotError(res.message || 'Gagal mengubah kata sandi.');
+      }
+    } catch (err) {
+      console.error('Confirm reset error:', err);
+      setForgotError('Terjadi kesalahan koneksi saat memperbarui kata sandi.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('11fc_logged_member_id');
@@ -219,6 +315,11 @@ export default function MemberPortalPage() {
     setMemberBookings([]);
     setLoginPassword('');
     setRegSuccessMember(null);
+    setAuthTab('login');
+    setForgotStep('input_email');
+    setForgotEmail('');
+    setNewPassword('');
+    setConfirmNewPassword('');
   };
 
   const handleCopy = (text: string, bankName: string) => {
@@ -246,7 +347,7 @@ export default function MemberPortalPage() {
           </p>
         </div>
 
-        {/* 1. AUTHENTICATION (LOGIN / REGISTER) IF NOT LOGGED IN */}
+        {/* 1. AUTHENTICATION (LOGIN / REGISTER / FORGOT PASSWORD) IF NOT LOGGED IN */}
         {!activeMember ? (
           <div className="max-w-md mx-auto space-y-6 animate-in fade-in">
             {/* Tab Switcher */}
@@ -256,6 +357,7 @@ export default function MemberPortalPage() {
                 onClick={() => {
                   setAuthTab('login');
                   setLoginError('');
+                  setForgotError('');
                 }}
                 className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
                   authTab === 'login'
@@ -271,6 +373,7 @@ export default function MemberPortalPage() {
                 onClick={() => {
                   setAuthTab('register');
                   setLoginError('');
+                  setForgotError('');
                 }}
                 className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
                   authTab === 'register'
@@ -318,9 +421,23 @@ export default function MemberPortalPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                      Password Member *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-zinc-300 uppercase">
+                        Password Member *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthTab('forgot');
+                          setForgotStep('input_email');
+                          setForgotError('');
+                          setForgotSuccessMsg('');
+                        }}
+                        className="text-[11px] text-[#d63725] hover:underline font-bold"
+                      >
+                        Lupa Password?
+                      </button>
+                    </div>
                     <div className="relative">
                       <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -361,8 +478,8 @@ export default function MemberPortalPage() {
                   </button>
                 </form>
 
-                <div className="pt-2 text-center text-xs text-zinc-500">
-                  Belum punya kartu member?{' '}
+                <div className="pt-2 text-center text-xs text-zinc-500 flex items-center justify-center gap-2">
+                  <span>Belum punya kartu member?</span>
                   <button
                     type="button"
                     onClick={() => setAuthTab('register')}
@@ -372,7 +489,7 @@ export default function MemberPortalPage() {
                   </button>
                 </div>
               </div>
-            ) : (
+            ) : authTab === 'register' ? (
               /* TAB B: REGISTER FORM */
               <div className="p-5 sm:p-7 rounded-3xl bg-zinc-900/90 border border-zinc-800 space-y-5">
                 <div>
@@ -426,6 +543,26 @@ export default function MemberPortalPage() {
                         className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Email (Wajib untuk Pemulihan Sandi) *
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="email"
+                        placeholder="member@email.com"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                        required
+                      />
+                    </div>
+                    <span className="text-[10px] text-zinc-500 mt-1 block">
+                      Email digunakan untuk menerima reset password jika Anda lupa sandi.
+                    </span>
                   </div>
 
                   <div>
@@ -493,6 +630,172 @@ export default function MemberPortalPage() {
                   >
                     Masuk di sini
                   </button>
+                </div>
+              </div>
+            ) : (
+              /* TAB C: FORGOT PASSWORD FORM */
+              <div className="p-5 sm:p-7 rounded-3xl bg-zinc-900/90 border border-zinc-800 space-y-5 animate-in fade-in">
+                <div className="flex items-center gap-2 text-[#d63725]">
+                  <KeyRound className="w-5 h-5" />
+                  <h2 className="text-base sm:text-lg font-black text-white uppercase">
+                    Pemulihan Kata Sandi
+                  </h2>
+                </div>
+                <p className="text-xs text-zinc-400">
+                  Masukkan email yang Anda daftarkan pada akun member untuk memulihkan akses kata sandi.
+                </p>
+
+                {forgotStep === 'input_email' ? (
+                  <form onSubmit={handleRequestReset} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Email Member Terdaftar *
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          placeholder="contoh: member@email.com"
+                          value={forgotEmail}
+                          onChange={(e) => {
+                            setForgotEmail(e.target.value);
+                            if (forgotError) setForgotError('');
+                          }}
+                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                          autoFocus
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {forgotError && (
+                      <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-xs text-rose-300 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                        <span>{forgotError}</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95"
+                    >
+                      <Send className="w-4 h-4" />
+                      {forgotLoading ? 'Memeriksa Email...' : 'Kirim Kode Verifikasi'}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleConfirmReset} className="space-y-4">
+                    {forgotSuccessMsg && (
+                      <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-300 flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                        <span>{forgotSuccessMsg}</span>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Kode Verifikasi Keamanan *
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="6 Digit Kode"
+                          value={forgotOtp}
+                          onChange={(e) => setForgotOtp(e.target.value)}
+                          className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-[#ba2d1d]"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Kata Sandi Baru *
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          placeholder="Minimal 4 karakter"
+                          value={newPassword}
+                          onChange={(e) => {
+                            setNewPassword(e.target.value);
+                            if (forgotError) setForgotError('');
+                          }}
+                          className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                        >
+                          {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Ulangi Kata Sandi Baru *
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          placeholder="Ketik ulang kata sandi baru"
+                          value={confirmNewPassword}
+                          onChange={(e) => {
+                            setConfirmNewPassword(e.target.value);
+                            if (forgotError) setForgotError('');
+                          }}
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {forgotError && (
+                      <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-xs text-rose-300 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                        <span>{forgotError}</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {forgotLoading ? 'Menyimpan Sandi Baru...' : 'Simpan Sandi Baru & Masuk'}
+                    </button>
+                  </form>
+                )}
+
+                <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthTab('login');
+                      setForgotError('');
+                    }}
+                    className="text-zinc-400 hover:text-white"
+                  >
+                    ← Kembali ke Login
+                  </button>
+
+                  <a
+                    href={`https://wa.me/${GYM_INFO.phone}?text=${encodeURIComponent(
+                      'Halo Admin 11 Fight Camp, saya membutuhkan bantuan terkait pemulihan akun/password member saya.'
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#d63725] hover:underline font-semibold"
+                  >
+                    Bantuan WhatsApp Admin
+                  </a>
                 </div>
               </div>
             )}

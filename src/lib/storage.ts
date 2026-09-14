@@ -724,3 +724,93 @@ export async function deleteMember(id: string): Promise<boolean> {
   return true;
 }
 
+export async function resetMemberPassword(
+  emailOrIdentifier: string,
+  newPassword: string
+): Promise<{ success: boolean; message: string; member?: Member }> {
+  const cleanInput = emailOrIdentifier.trim().toLowerCase();
+  if (!cleanInput) {
+    return { success: false, message: 'Email tidak boleh kosong.' };
+  }
+  if (!newPassword || newPassword.trim().length < 4) {
+    return { success: false, message: 'Password minimal 4 karakter.' };
+  }
+
+  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('members').select('*');
+      if (!error && data && data.length > 0) {
+        const found = data.find(
+          (m) =>
+            (m.email && m.email.toLowerCase().trim() === cleanInput) ||
+            (m.phone && m.phone.replace(/[^0-9]/g, '') === cleanInput.replace(/[^0-9]/g, '')) ||
+            (m.username && m.username.toLowerCase().trim() === cleanInput)
+        );
+        if (found) {
+          const { error: updateError } = await supabase
+            .from('members')
+            .update({ password: newPassword.trim() })
+            .eq('id', found.id);
+
+          if (!updateError) {
+            const updatedMember: Member = {
+              id: found.id,
+              memberCode: found.member_code,
+              name: found.name,
+              phone: found.phone,
+              username: found.username || undefined,
+              password: newPassword.trim(),
+              email: found.email || undefined,
+              planId: found.plan_id,
+              planTitle: found.plan_title,
+              price: found.price,
+              paymentMethod: found.payment_method,
+              paymentStatus: found.payment_status,
+              status: found.status,
+              startDate: found.start_date,
+              endDate: found.end_date,
+              remainingSessions: found.remaining_sessions ?? undefined,
+              totalSessions: found.total_sessions ?? undefined,
+              notes: found.notes || undefined,
+              createdAt: found.created_at,
+            };
+
+            const updatedLocal = current.map((m) =>
+              m.id === found.id ? { ...m, password: newPassword.trim() } : m
+            );
+            setLocalItem(STORAGE_KEYS.MEMBERS, updatedLocal);
+            return { success: true, message: 'Password berhasil diperbarui!', member: updatedMember };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase reset password error, checking local:', err);
+    }
+  }
+
+  const localFound = current.find(
+    (m) =>
+      (m.email && m.email.toLowerCase().trim() === cleanInput) ||
+      (m.phone && m.phone.replace(/[^0-9]/g, '') === cleanInput.replace(/[^0-9]/g, '')) ||
+      (m.username && m.username.toLowerCase().trim() === cleanInput)
+  );
+
+  if (!localFound) {
+    return {
+      success: false,
+      message: 'Email tidak ditemukan di database member. Pastikan email yang dimasukkan sama saat registrasi.',
+    };
+  }
+
+  const updatedMember: Member = { ...localFound, password: newPassword.trim() };
+  const updatedLocal = current.map((m) =>
+    m.id === localFound.id ? updatedMember : m
+  );
+  setLocalItem(STORAGE_KEYS.MEMBERS, updatedLocal);
+
+  return { success: true, message: 'Password berhasil diperbarui!', member: updatedMember };
+}
+
+
