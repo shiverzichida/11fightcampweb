@@ -48,6 +48,10 @@ import {
   Lock,
   LogOut,
   Pencil,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Mail,
 } from 'lucide-react';
 
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -138,10 +142,28 @@ export default function AdminPage() {
   // Filter state for bookings
   const [bookingFilter, setBookingFilter] = useState<'all' | 'confirmed' | 'attended' | 'cancelled'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [bookingPage, setBookingPage] = useState(1);
+  const bookingPageSize = 10;
 
   // Filter state for members
   const [memberFilter, setMemberFilter] = useState<'all' | 'active' | 'pending' | 'expired' | 'inactive'>('all');
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [memberPage, setMemberPage] = useState(1);
+  const memberPageSize = 10;
+
+  // Schedule detail participant modal
+  const [selectedScheduleForDetail, setSelectedScheduleForDetail] = useState<Schedule | null>(null);
+  const [detailDateFilter, setDetailDateFilter] = useState<string>('all');
+  const [detailSearchQuery, setDetailSearchQuery] = useState<string>('');
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setBookingPage(1);
+  }, [searchQuery, bookingFilter]);
+
+  useEffect(() => {
+    setMemberPage(1);
+  }, [memberSearchQuery, memberFilter]);
 
   // Load all data
   const loadData = async () => {
@@ -409,6 +431,40 @@ export default function AdminPage() {
     }
     return true;
   });
+
+  // Helper for Upcoming Class Date
+  const getNextDateForDay = (dayOfWeek: number) => {
+    const now = new Date();
+    const currentDay = now.getDay();
+    let diff = dayOfWeek - currentDay;
+    if (diff < 0) diff += 7;
+    const d = new Date(now);
+    d.setDate(now.getDate() + diff);
+
+    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    return {
+      formatted: `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+      shortFormatted: `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`,
+      iso: d.toISOString().split('T')[0],
+      dayName: dayNames[d.getDay()],
+    };
+  };
+
+  // Paginated Bookings
+  const totalBookingPages = Math.ceil(filteredBookings.length / bookingPageSize) || 1;
+  const paginatedBookings = filteredBookings.slice(
+    (bookingPage - 1) * bookingPageSize,
+    bookingPage * bookingPageSize
+  );
+
+  // Paginated Members
+  const totalMemberPages = Math.ceil(filteredMembers.length / memberPageSize) || 1;
+  const paginatedMembers = filteredMembers.slice(
+    (memberPage - 1) * memberPageSize,
+    memberPage * memberPageSize
+  );
 
   // Calculate Metrics
   const bookingRevenue = bookings
@@ -687,7 +743,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800 bg-zinc-900/40">
-                    {filteredBookings.map((b) => {
+                    {paginatedBookings.map((b) => {
                       const memberMatch = members.find(
                         (m) =>
                           (m.phone && m.phone.replace(/[^0-9]/g, '') === b.customerPhone.replace(/[^0-9]/g, '')) ||
@@ -781,6 +837,51 @@ export default function AdminPage() {
                 </table>
               </div>
             )}
+
+            {/* Pagination for Bookings */}
+            {!loading && filteredBookings.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 px-1 text-xs text-zinc-400">
+                <div>
+                  Menampilkan <strong className="text-white">{(bookingPage - 1) * bookingPageSize + 1}</strong> - <strong className="text-white">{Math.min(bookingPage * bookingPageSize, filteredBookings.length)}</strong> dari <strong className="text-white">{filteredBookings.length}</strong> reservasi
+                </div>
+
+                {totalBookingPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setBookingPage((p) => Math.max(1, p - 1))}
+                      disabled={bookingPage <= 1}
+                      className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+
+                    {Array.from({ length: totalBookingPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setBookingPage(p)}
+                        className={`min-w-[32px] h-8 px-2.5 rounded-xl font-bold text-xs transition-colors ${
+                          bookingPage === p
+                            ? 'bg-[#ba2d1d] text-white'
+                            : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setBookingPage((p) => Math.min(totalBookingPages, p + 1))}
+                      disabled={bookingPage >= totalBookingPages}
+                      className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
+                      title="Halaman Selanjutnya"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -851,7 +952,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800 bg-zinc-900/40">
-                    {filteredMembers.map((m) => (
+                    {paginatedMembers.map((m) => (
                       <tr key={m.id} className="hover:bg-zinc-800/40 transition-colors">
                         <td className="py-3 px-4">
                           <span className="font-mono font-bold text-amber-400 text-xs bg-amber-950/60 px-2 py-0.5 rounded border border-amber-900/50">
@@ -973,6 +1074,51 @@ export default function AdminPage() {
                 </table>
               </div>
             )}
+
+            {/* Pagination for Members */}
+            {!loading && filteredMembers.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 px-1 text-xs text-zinc-400">
+                <div>
+                  Menampilkan <strong className="text-white">{(memberPage - 1) * memberPageSize + 1}</strong> - <strong className="text-white">{Math.min(memberPage * memberPageSize, filteredMembers.length)}</strong> dari <strong className="text-white">{filteredMembers.length}</strong> member
+                </div>
+
+                {totalMemberPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setMemberPage((p) => Math.max(1, p - 1))}
+                      disabled={memberPage <= 1}
+                      className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+
+                    {Array.from({ length: totalMemberPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setMemberPage(p)}
+                        className={`min-w-[32px] h-8 px-2.5 rounded-xl font-bold text-xs transition-colors ${
+                          memberPage === p
+                            ? 'bg-[#ba2d1d] text-white'
+                            : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => setMemberPage((p) => Math.min(totalMemberPages, p + 1))}
+                      disabled={memberPage >= totalMemberPages}
+                      className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30 disabled:hover:text-zinc-400 transition-colors"
+                      title="Halaman Selanjutnya"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -980,76 +1126,114 @@ export default function AdminPage() {
         {activeTab === 'schedules' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {schedules.map((sch) => (
-                <div
-                  key={sch.id}
-                  className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
-                    sch.isActive
-                      ? 'bg-zinc-900/80 border-zinc-800'
-                      : 'bg-zinc-950/50 border-zinc-800/50 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-900/50 uppercase">
-                        {DAYS[sch.dayOfWeek]}
-                      </span>
-                      <h3 className="text-base font-black text-white mt-1.5">
-                        {sch.classData?.title || 'Sesi Bela Diri'}
-                      </h3>
-                      <p className="text-xs text-zinc-400">
-                        Coach: <strong className="text-zinc-300">{sch.trainerData?.name}</strong>
-                      </p>
+              {schedules.map((sch) => {
+                const nextDate = getNextDateForDay(sch.dayOfWeek);
+                const schBookings = bookings.filter((b) => b.scheduleId === sch.id);
+                const activeBookings = schBookings.filter((b) => b.status !== 'cancelled');
+
+                return (
+                  <div
+                    key={sch.id}
+                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
+                      sch.isActive
+                        ? 'bg-zinc-900/80 border-zinc-800'
+                        : 'bg-zinc-950/50 border-zinc-800/50 opacity-60'
+                    }`}
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-900/50 uppercase">
+                              {DAYS[sch.dayOfWeek]}
+                            </span>
+                            <span className="text-[10px] font-semibold text-zinc-400">
+                              {sch.startTime} - {sch.endTime} WIB
+                            </span>
+                          </div>
+                          <h3 className="text-base font-black text-white mt-1.5">
+                            {sch.classData?.title || 'Sesi Bela Diri'}
+                          </h3>
+                          <p className="text-xs text-zinc-400">
+                            Coach: <strong className="text-zinc-300">{sch.trainerData?.name}</strong>
+                          </p>
+                        </div>
+
+                        <span className="text-xs font-bold text-amber-400">
+                          Rp {sch.price.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+
+                      {/* Tanggal Kelas & Info Peserta */}
+                      <div className="bg-black/50 p-2.5 rounded-xl border border-zinc-800 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between text-zinc-300">
+                          <span className="flex items-center gap-1 text-rose-400 font-semibold text-[11px]">
+                            <Calendar className="w-3.5 h-3.5" />
+                            Tanggal Sesi:
+                          </span>
+                          <strong className="text-white text-[11px] font-bold">{nextDate.formatted}</strong>
+                        </div>
+                        <div className="flex items-center justify-between text-zinc-400 text-[11px] pt-1 border-t border-zinc-800/60">
+                          <span>Kapasitas Peserta:</span>
+                          <span className="font-bold text-zinc-200">
+                            <strong className={activeBookings.length >= sch.maxCapacity ? 'text-rose-400' : 'text-emerald-400'}>
+                              {activeBookings.length}
+                            </strong>{' '}
+                            / {sch.maxCapacity} Terisi
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <span className="text-xs font-bold text-amber-400">
-                      Rp {sch.price.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>
-                        {sch.startTime} - {sch.endTime} WIB
-                      </span>
-                    </div>
-                    <span>Kapasitas: {sch.maxCapacity}</span>
-                  </div>
-
-                  <div className="pt-2 flex items-center justify-between gap-2 border-t border-zinc-800/80">
-                    <button
-                      onClick={() => handleToggleSchedule(sch.id, sch.isActive)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                        sch.isActive
-                          ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                          : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                      }`}
-                    >
-                      {sch.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-                    </button>
-
-                    <div className="flex items-center gap-1.5">
+                    <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+                      {/* Tombol Masuk Detail Jadwal & Lihat Peserta */}
                       <button
-                        onClick={() => handleOpenEditSchedule(sch)}
-                        className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-colors border border-zinc-700"
-                        title="Edit Jadwal"
+                        onClick={() => {
+                          setSelectedScheduleForDetail(sch);
+                          setDetailDateFilter('all');
+                          setDetailSearchQuery('');
+                        }}
+                        className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-zinc-800 to-zinc-850 hover:from-zinc-700 hover:to-zinc-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all border border-zinc-700 active:scale-[0.98]"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
-                        Edit
+                        <Users className="w-3.5 h-3.5 text-amber-400" />
+                        Detail & Peserta ({activeBookings.length})
                       </button>
 
-                      <button
-                        onClick={() => handleDeleteSchedule(sch.id)}
-                        className="p-2 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
-                        title="Hapus Jadwal"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center justify-between gap-2">
+                        <button
+                          onClick={() => handleToggleSchedule(sch.id, sch.isActive)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                            sch.isActive
+                              ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                              : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                          }`}
+                        >
+                          {sch.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleOpenEditSchedule(sch)}
+                            className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-colors border border-zinc-700"
+                            title="Edit Jadwal"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteSchedule(sch.id)}
+                            className="p-2 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
+                            title="Hapus Jadwal"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -1509,6 +1693,256 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* MODAL: DETAIL JADWAL & DAFTAR PESERTA BOOKING */}
+        {selectedScheduleForDetail && (() => {
+          const sch = selectedScheduleForDetail;
+          const nextDate = getNextDateForDay(sch.dayOfWeek);
+          const allSchBookings = bookings.filter((b) => b.scheduleId === sch.id);
+          const availableDates = Array.from(new Set(allSchBookings.map((b) => b.bookingDate))).sort().reverse();
+
+          const filteredSchBookings = allSchBookings.filter((b) => {
+            if (detailDateFilter !== 'all' && b.bookingDate !== detailDateFilter) return false;
+            if (detailSearchQuery.trim()) {
+              const q = detailSearchQuery.toLowerCase();
+              const matchName = b.customerName.toLowerCase().includes(q);
+              const matchCode = b.bookingCode.toLowerCase().includes(q);
+              const matchPhone = b.customerPhone.includes(q);
+              return matchName || matchCode || matchPhone;
+            }
+            return true;
+          });
+
+          const activeCount = filteredSchBookings.filter((b) => b.status !== 'cancelled').length;
+
+          return (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 sm:p-8 max-w-4xl w-full space-y-5 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col">
+                {/* Modal Header */}
+                <div className="flex items-start justify-between border-b border-zinc-800 pb-4 shrink-0">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-900/50 uppercase">
+                        {DAYS[sch.dayOfWeek]}
+                      </span>
+                      <span className="text-xs text-zinc-300 font-semibold flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        {sch.startTime} - {sch.endTime} WIB
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                          sch.isActive
+                            ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50'
+                            : 'bg-zinc-800 text-zinc-400'
+                        }`}
+                      >
+                        {sch.isActive ? 'Sesi Aktif' : 'Nonaktif'}
+                      </span>
+                    </div>
+
+                    <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">
+                      {sch.classData?.title || 'Sesi Bela Diri'}
+                    </h2>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
+                      <p>
+                        Coach: <strong className="text-zinc-200">{sch.trainerData?.name || '-'}</strong>
+                      </p>
+                      <p>
+                        • Tanggal Sesi Terdekat: <strong className="text-rose-400">{nextDate.formatted}</strong>
+                      </p>
+                      <p>
+                        • Biaya Drop-in: <strong className="text-amber-400">Rp {sch.price.toLocaleString('id-ID')}</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedScheduleForDetail(null)}
+                    className="p-1 rounded-lg text-zinc-400 hover:text-white"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Capacity bar & Quick Stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-black/50 rounded-2xl border border-zinc-800 shrink-0">
+                  <div>
+                    <div className="text-[11px] text-zinc-400 font-medium">Total Booking Terdaftar</div>
+                    <div className="text-lg font-black text-white">{allSchBookings.length} Peserta</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-zinc-400 font-medium">Kapasitas Maksimal</div>
+                    <div className="text-lg font-black text-amber-400">{sch.maxCapacity} Orang / Sesi</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-zinc-400 font-medium">Status Terisi (Filter Aktif)</div>
+                    <div className="text-lg font-black text-emerald-400">
+                      {activeCount} Terisi / {Math.max(0, sch.maxCapacity - activeCount)} Sisa
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter by Date & Search */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Cari nama, tiket, HP..."
+                      value={detailSearchQuery}
+                      onChange={(e) => setDetailSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 rounded-xl bg-black/60 border border-zinc-700 text-xs text-white focus:outline-none focus:border-rose-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
+                    <span className="text-[11px] text-zinc-400 font-bold whitespace-nowrap">Pilih Tanggal:</span>
+                    <select
+                      value={detailDateFilter}
+                      onChange={(e) => setDetailDateFilter(e.target.value)}
+                      className="px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-xs text-white focus:outline-none focus:border-rose-500"
+                    >
+                      <option value="all">Semua Tanggal ({allSchBookings.length} booking)</option>
+                      {availableDates.map((d) => (
+                        <option key={d} value={d}>
+                          {d} ({allSchBookings.filter((b) => b.bookingDate === d).length} peserta)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Bookings List / Table */}
+                <div className="flex-1 overflow-y-auto min-h-[220px] rounded-2xl border border-zinc-800">
+                  {filteredSchBookings.length === 0 ? (
+                    <div className="py-12 text-center text-zinc-400 text-xs space-y-2">
+                      <Users className="w-8 h-8 text-zinc-600 mx-auto" />
+                      <p className="font-bold text-zinc-300">Belum Ada Peserta yang Booking</p>
+                      <p className="text-zinc-500 text-[11px]">
+                        {detailSearchQuery || detailDateFilter !== 'all'
+                          ? 'Tidak ada booking yang sesuai dengan filter pencarian / tanggal ini.'
+                          : 'Sesi kelas ini belum memiliki data reservasi peserta.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-xs text-zinc-300">
+                      <thead className="bg-zinc-950 text-[11px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800 sticky top-0">
+                        <tr>
+                          <th className="py-3 px-3.5">Kode Tiket</th>
+                          <th className="py-3 px-3.5">Peserta & Kontak</th>
+                          <th className="py-3 px-3.5">Tanggal Sesi</th>
+                          <th className="py-3 px-3.5">Status</th>
+                          <th className="py-3 px-3.5 text-right">Aksi Check-in</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-800 bg-zinc-900/40">
+                        {filteredSchBookings.map((b) => {
+                          const memberMatch = members.find(
+                            (m) =>
+                              (m.phone && m.phone.replace(/[^0-9]/g, '') === b.customerPhone.replace(/[^0-9]/g, '')) ||
+                              (m.name && m.name.toLowerCase().trim() === b.customerName.toLowerCase().trim())
+                          );
+
+                          return (
+                            <tr key={b.id} className="hover:bg-zinc-800/40 transition-colors">
+                              <td className="py-3 px-3.5">
+                                <span className="font-mono font-bold text-rose-400 text-xs">
+                                  {b.bookingCode}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3.5">
+                                <div className="font-bold text-white flex items-center gap-1.5">
+                                  {b.customerName}
+                                  {memberMatch ? (
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800/60 font-semibold">
+                                      Member ({memberMatch.planTitle})
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-950 text-blue-300 border border-blue-800/60 font-semibold">
+                                      Drop-in
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 flex items-center gap-2 mt-0.5">
+                                  <a
+                                    href={`https://wa.me/${b.customerPhone.replace(/[^0-9]/g, '')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-emerald-400 hover:underline flex items-center gap-0.5 font-mono"
+                                  >
+                                    <Phone className="w-3 h-3" />
+                                    {b.customerPhone}
+                                  </a>
+                                  {b.customerEmail && (
+                                    <span className="text-zinc-500 truncate max-w-[150px]">{b.customerEmail}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3.5">
+                                <div className="font-bold text-white">{b.bookingDate}</div>
+                                <div className="text-[10px] text-zinc-500 capitalize">{b.experienceLevel}</div>
+                              </td>
+                              <td className="py-3 px-3.5">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                    b.status === 'attended'
+                                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50'
+                                      : b.status === 'cancelled'
+                                      ? 'bg-red-950 text-red-400 border border-red-800/50'
+                                      : 'bg-amber-950 text-amber-400 border border-amber-800/50'
+                                  }`}
+                                >
+                                  {b.status === 'attended' ? '✓ Hadir' : b.status === 'cancelled' ? 'Batal' : 'Confirmed'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3.5 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {b.status !== 'attended' && (
+                                    <button
+                                      onClick={() => handleUpdateStatus(b, 'attended')}
+                                      className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1 transition-colors"
+                                      title="Tandai Hadir"
+                                    >
+                                      <CheckCircle className="w-3 h-3" />
+                                      Hadir
+                                    </button>
+                                  )}
+                                  {b.status !== 'cancelled' && (
+                                    <button
+                                      onClick={() => handleUpdateStatus(b, 'cancelled')}
+                                      className="p-1 rounded-lg bg-red-950/50 hover:bg-red-900 text-red-400 border border-red-800/50"
+                                      title="Batalkan"
+                                    >
+                                      <XCircle className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div className="pt-2 border-t border-zinc-800 flex items-center justify-between shrink-0">
+                  <span className="text-xs text-zinc-500">
+                    Total peserta ditampilkan: <strong className="text-zinc-300">{filteredSchBookings.length}</strong>
+                  </span>
+                  <button
+                    onClick={() => setSelectedScheduleForDetail(null)}
+                    className="px-5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs transition-colors"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </main>
 
       <Footer />
