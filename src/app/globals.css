@@ -35,51 +35,23 @@ body {
   background: #ba2d1d;
 }
 
-/* Fire & Burning Flame Glow Animations */
-@keyframes flame-glow {
-  0% {
-    box-shadow: 0 0 15px rgba(186, 45, 29, 0.6), 0 0 30px rgba(234, 88, 12, 0.35), inset 0 0 12px rgba(186, 45, 29, 0.2);
-    border-color: rgba(214, 55, 37, 0.8);
-  }
-  50% {
-    box-shadow: 0 0 25px rgba(214, 55, 37, 0.85), 0 0 45px rgba(245, 158, 11, 0.5), inset 0 0 18px rgba(234, 88, 12, 0.3);
-    border-color: rgba(245, 158, 11, 0.9);
-  }
-  100% {
-    box-shadow: 0 0 18px rgba(186, 45, 29, 0.65), 0 0 35px rgba(234, 88, 12, 0.4), inset 0 0 14px rgba(186, 45, 29, 0.25);
-    border-color: rgba(214, 55, 37, 0.85);
-  }
-}
-
-@keyframes fire-pulse-btn {
-  0% {
-    box-shadow: 0 0 12px rgba(186, 45, 29, 0.7), 0 4px 20px rgba(234, 88, 12, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 24px rgba(214, 55, 37, 0.9), 0 6px 30px rgba(245, 158, 11, 0.6);
-  }
-  100% {
-    box-shadow: 0 0 12px rgba(186, 45, 29, 0.7), 0 4px 20px rgba(234, 88, 12, 0.4);
-  }
-}
-
+/* Clean & Solid Combat Theme Buttons and Cards */
 .btn-fire {
-  background: linear-gradient(135deg, #ba2d1d 0%, #d63725 50%, #ea580c 100%);
-  animation: fire-pulse-btn 2.5s infinite ease-in-out;
+  background: #ba2d1d;
+  color: #ffffff;
+  transition: all 0.2s ease-in-out;
 }
 
 .btn-fire:hover {
-  background: linear-gradient(135deg, #d63725 0%, #ea580c 60%, #f59e0b 100%);
-  box-shadow: 0 0 30px rgba(214, 55, 37, 1), 0 0 50px rgba(234, 88, 12, 0.7);
+  background: #d63725;
 }
 
 .card-fire {
-  animation: flame-glow 3s infinite ease-in-out;
+  border-color: #ba2d1d;
   border-width: 1.5px;
 }
 
 .card-fire-hover:hover {
-  animation: flame-glow 2s infinite ease-in-out;
   border-color: #ba2d1d !important;
 }
 

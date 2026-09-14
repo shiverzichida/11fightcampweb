@@ -19,6 +19,7 @@ import {
   saveNewMember,
   updateMemberStatus,
   decrementMemberSession,
+  incrementMemberSession,
   deleteMember,
 } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -198,13 +199,46 @@ export default function AdminPage() {
 
   // Handle Member Status Update (Confirm Payment)
   const handleConfirmMemberPayment = async (memberId: string) => {
+    // Optimistic UI update
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === memberId
+          ? {
+              ...m,
+              paymentStatus: 'paid',
+              status: 'active',
+              startDate: new Date().toISOString().split('T')[0],
+            }
+          : m
+      )
+    );
     await updateMemberStatus(memberId, 'paid', 'active');
     await loadData();
   };
 
   // Handle Decrement Member Session
   const handleDecrementSession = async (memberId: string) => {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === memberId && typeof m.remainingSessions === 'number' && m.remainingSessions > 0
+          ? { ...m, remainingSessions: m.remainingSessions - 1 }
+          : m
+      )
+    );
     await decrementMemberSession(memberId);
+    await loadData();
+  };
+
+  // Handle Increment Member Session
+  const handleIncrementSession = async (memberId: string) => {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === memberId && typeof m.remainingSessions === 'number'
+          ? { ...m, remainingSessions: m.remainingSessions + 1 }
+          : m
+      )
+    );
+    await incrementMemberSession(memberId);
     await loadData();
   };
 
@@ -228,9 +262,26 @@ export default function AdminPage() {
     await loadData();
   };
 
-  // Handle Update Booking Status
-  const handleUpdateStatus = async (id: string, status: 'confirmed' | 'attended' | 'cancelled') => {
-    await updateBookingStatus(id, status);
+  // Handle Update Booking Status (with auto session deduction for package members)
+  const handleUpdateStatus = async (booking: Booking, status: 'confirmed' | 'attended' | 'cancelled') => {
+    if (status === 'attended') {
+      const matchingMember = members.find(
+        (m) =>
+          (m.phone && m.phone.replace(/[^0-9]/g, '') === booking.customerPhone.replace(/[^0-9]/g, '')) ||
+          (m.name && m.name.toLowerCase().trim() === booking.customerName.toLowerCase().trim())
+      );
+
+      if (matchingMember && typeof matchingMember.remainingSessions === 'number' && matchingMember.remainingSessions > 0) {
+        const deduct = confirm(
+          `Peserta ${booking.customerName} memiliki paket "${matchingMember.planTitle}" (Sisa: ${matchingMember.remainingSessions} sesi).\n\nTandai hadir dan potong 1 sesi? (Sisa akan menjadi ${matchingMember.remainingSessions - 1} sesi)`
+        );
+        if (deduct) {
+          await decrementMemberSession(matchingMember.id);
+        }
+      }
+    }
+
+    await updateBookingStatus(booking.id, status);
     await loadData();
   };
 
@@ -299,14 +350,14 @@ export default function AdminPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setShowAddMemberModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-lg"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all active:scale-95 shadow-md"
             >
               <UserPlus className="w-4 h-4" />
               + Registrasi Member
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-fire text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-lg"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ba2d1d] hover:bg-[#d63725] text-white font-black text-xs transition-all active:scale-95 shadow-md"
             >
               <Plus className="w-4 h-4" />
               Tambah Jadwal
@@ -372,7 +423,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('bookings')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'bookings'
-                ? 'btn-fire text-white shadow-md'
+                ? 'bg-[#ba2d1d] text-white shadow-md'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -382,7 +433,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('members')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'members'
-                ? 'btn-fire text-white shadow-md'
+                ? 'bg-[#ba2d1d] text-white shadow-md'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -392,7 +443,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('schedules')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'schedules'
-                ? 'btn-fire text-white shadow-md'
+                ? 'bg-[#ba2d1d] text-white shadow-md'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -412,7 +463,7 @@ export default function AdminPage() {
                   placeholder="Cari nama, kode booking, HP..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-zinc-700 text-xs text-white focus:outline-none focus:border-rose-500"
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-zinc-700 text-xs text-white focus:outline-none focus:border-[#ba2d1d]"
                 />
               </div>
 
@@ -446,86 +497,104 @@ export default function AdminPage() {
                   <thead className="bg-zinc-950 text-[11px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
                     <tr>
                       <th className="py-3 px-4">Kode Tiket</th>
-                      <th className="py-3 px-4">Peserta & Kontak</th>
+                      <th className="py-3 px-4">Peserta & Status Member</th>
                       <th className="py-3 px-4">Program & Sesi</th>
                       <th className="py-3 px-4">Tanggal & Jam</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Aksi</th>
+                      <th className="py-3 px-4">Status Reservasi</th>
+                      <th className="py-3 px-4 text-right">Aksi Check-in</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800 bg-zinc-900/40">
-                    {filteredBookings.map((b) => (
-                      <tr key={b.id} className="hover:bg-zinc-800/40 transition-colors">
-                        <td className="py-3 px-4">
-                          <span className="font-mono font-bold text-rose-400 text-sm">
-                            {b.bookingCode}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-white">{b.customerName}</div>
-                          <div className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5">
-                            <a
-                              href={`https://wa.me/${b.customerPhone.replace(/[^0-9]/g, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-400 hover:underline"
+                    {filteredBookings.map((b) => {
+                      const memberMatch = members.find(
+                        (m) =>
+                          (m.phone && m.phone.replace(/[^0-9]/g, '') === b.customerPhone.replace(/[^0-9]/g, '')) ||
+                          (m.name && m.name.toLowerCase().trim() === b.customerName.toLowerCase().trim())
+                      );
+
+                      return (
+                        <tr key={b.id} className="hover:bg-zinc-800/40 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="font-mono font-bold text-rose-400 text-sm">
+                              {b.bookingCode}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              {b.customerName}
+                              {memberMatch && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60 font-semibold">
+                                  {memberMatch.planTitle}{' '}
+                                  {typeof memberMatch.remainingSessions === 'number' &&
+                                    `(Sisa: ${memberMatch.remainingSessions} sesi)`}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5">
+                              <a
+                                href={`https://wa.me/${b.customerPhone.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-400 hover:underline"
+                              >
+                                {b.customerPhone}
+                              </a>
+                              <span className="capitalize text-zinc-500">({b.experienceLevel})</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-zinc-200">
+                              {b.scheduleData?.classData?.title || 'Sesi Bela Diri'}
+                            </div>
+                            <div className="text-[11px] text-zinc-400">
+                              Coach: {b.scheduleData?.trainerData?.name || '-'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-medium text-white">{b.bookingDate}</div>
+                            <div className="text-[11px] text-zinc-400">
+                              {b.scheduleData?.startTime} - {b.scheduleData?.endTime} WIB
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                b.status === 'attended'
+                                  ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
+                                  : b.status === 'cancelled'
+                                  ? 'bg-red-950/80 text-red-400 border border-red-800/50'
+                                  : 'bg-amber-950/80 text-amber-400 border border-amber-800/50'
+                              }`}
                             >
-                              {b.customerPhone}
-                            </a>
-                            <span className="capitalize text-zinc-500">({b.experienceLevel})</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-semibold text-zinc-200">
-                            {b.scheduleData?.classData?.title || 'Sesi Bela Diri'}
-                          </div>
-                          <div className="text-[11px] text-zinc-400">
-                            Coach: {b.scheduleData?.trainerData?.name || '-'}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="font-medium text-white">{b.bookingDate}</div>
-                          <div className="text-[11px] text-zinc-400">
-                            {b.scheduleData?.startTime} - {b.scheduleData?.endTime} WIB
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                              b.status === 'attended'
-                                ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
-                                : b.status === 'cancelled'
-                                ? 'bg-red-950/80 text-red-400 border border-red-800/50'
-                                : 'bg-amber-950/80 text-amber-400 border border-amber-800/50'
-                            }`}
-                          >
-                            {b.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {b.status !== 'attended' && (
-                              <button
-                                onClick={() => handleUpdateStatus(b.id, 'attended')}
-                                className="p-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 border border-emerald-800/50"
-                                title="Tandai Hadir"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
-                            )}
-                            {b.status !== 'cancelled' && (
-                              <button
-                                onClick={() => handleUpdateStatus(b.id, 'cancelled')}
-                                className="p-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 text-red-400 border border-red-800/50"
-                                title="Batalkan Booking"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              {b.status === 'attended' ? '✓ Hadir' : b.status === 'cancelled' ? 'Batal' : 'Confirmed'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {b.status !== 'attended' && (
+                                <button
+                                  onClick={() => handleUpdateStatus(b, 'attended')}
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-colors"
+                                  title="Tandai Hadir (Check-in)"
+                                >
+                                  <CheckCircle className="w-3.5 h-3.5" />
+                                  Check-in
+                                </button>
+                              )}
+                              {b.status !== 'cancelled' && (
+                                <button
+                                  onClick={() => handleUpdateStatus(b, 'cancelled')}
+                                  className="p-1.5 rounded-lg bg-red-950/50 hover:bg-red-900 text-red-400 border border-red-800/50"
+                                  title="Batalkan Booking"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -545,7 +614,7 @@ export default function AdminPage() {
                   placeholder="Cari nama member, kode, paket..."
                   value={memberSearchQuery}
                   onChange={(e) => setMemberSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-zinc-700 text-xs text-white focus:outline-none focus:border-rose-500"
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-zinc-700 text-xs text-white focus:outline-none focus:border-[#ba2d1d]"
                 />
               </div>
 
@@ -579,7 +648,7 @@ export default function AdminPage() {
                 <p>Belum ada data member yang sesuai filter.</p>
                 <button
                   onClick={() => setShowAddMemberModal(true)}
-                  className="px-4 py-2 rounded-xl btn-fire text-white font-bold text-xs inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[#ba2d1d] hover:bg-[#d63725] text-white font-bold text-xs inline-flex items-center gap-1.5"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   Registrasi Member Pertama
@@ -594,9 +663,9 @@ export default function AdminPage() {
                       <th className="py-3 px-4">Nama & WhatsApp</th>
                       <th className="py-3 px-4">Paket Membership</th>
                       <th className="py-3 px-4">Pembayaran</th>
-                      <th className="py-3 px-4">Masa Aktif / Kuota</th>
+                      <th className="py-3 px-4">Masa Aktif & Sisa Sesi</th>
                       <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Aksi Konfirmasi</th>
+                      <th className="py-3 px-4 text-right">Aksi Manajemen</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800 bg-zinc-900/40">
@@ -639,7 +708,7 @@ export default function AdminPage() {
                                 : 'bg-amber-950 text-amber-400 border border-amber-800/50'
                             }`}
                           >
-                            {m.paymentStatus === 'paid' ? '✓ Lunas' : '⏳ Pending'}
+                            {m.paymentStatus === 'paid' ? '✓ Lunas' : '⏳ Menunggu Konfirmasi'}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -647,19 +716,32 @@ export default function AdminPage() {
                             {m.startDate} s/d {m.endDate}
                           </div>
                           {typeof m.remainingSessions === 'number' && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[10px] font-bold text-amber-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <span
+                                className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
+                                  m.remainingSessions > 0
+                                    ? 'text-amber-300 bg-amber-950/60 border-amber-800/50'
+                                    : 'text-red-400 bg-red-950 border-red-900'
+                                }`}
+                              >
                                 Sisa: {m.remainingSessions} / {m.totalSessions} sesi
                               </span>
                               {m.remainingSessions > 0 && (
                                 <button
                                   onClick={() => handleDecrementSession(m.id)}
-                                  className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold"
-                                  title="Potong 1 sesi saat member latihan"
+                                  className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-black text-[10px] border border-zinc-700 transition-colors"
+                                  title="Potong 1 sesi saat member hadir latihan"
                                 >
                                   -1 Sesi
                                 </button>
                               )}
+                              <button
+                                onClick={() => handleIncrementSession(m.id)}
+                                className="px-1.5 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-bold text-[10px] border border-zinc-800 transition-colors"
+                                title="Kembalikan / Tambah 1 sesi"
+                              >
+                                +1
+                              </button>
                             </div>
                           )}
                         </td>
@@ -671,7 +753,7 @@ export default function AdminPage() {
                                 : m.status === 'expired'
                                 ? 'bg-red-950/80 text-red-400 border border-red-800/50'
                                 : m.status === 'pending'
-                                ? 'bg-amber-950/80 text-amber-400 border border-amber-800/50 animate-pulse'
+                                ? 'bg-amber-950/80 text-amber-400 border border-amber-800/50'
                                 : 'bg-zinc-800 text-zinc-400'
                             }`}
                           >
@@ -687,7 +769,7 @@ export default function AdminPage() {
                             {m.paymentStatus === 'pending' && (
                               <button
                                 onClick={() => handleConfirmMemberPayment(m.id)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 transition-colors"
                                 title="Konfirmasi Pembayaran Lunas"
                               >
                                 <Check className="w-3.5 h-3.5" />
@@ -696,7 +778,7 @@ export default function AdminPage() {
                             )}
                             <button
                               onClick={() => handleDeleteMember(m.id)}
-                              className="p-1.5 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
+                              className="p-1.5 rounded-lg bg-red-950/50 hover:bg-red-900 text-red-400 border border-red-900/40"
                               title="Hapus Member"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

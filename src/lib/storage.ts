@@ -530,6 +530,38 @@ export async function decrementMemberSession(id: string): Promise<boolean> {
   return true;
 }
 
+export async function incrementMemberSession(id: string): Promise<boolean> {
+  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+  const member = current.find((m) => m.id === id);
+  if (!member || typeof member.remainingSessions !== 'number') {
+    return false;
+  }
+
+  const total = member.totalSessions || 10;
+  const newRemaining = Math.min(total, member.remainingSessions + 1);
+  const newStatus = 'active';
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase
+        .from('members')
+        .update({
+          remaining_sessions: newRemaining,
+          status: newStatus,
+        })
+        .eq('id', id);
+    } catch (err) {
+      console.warn('Supabase increment member error:', err);
+    }
+  }
+
+  const updated = current.map((m) =>
+    m.id === id ? { ...m, remainingSessions: newRemaining, status: newStatus } : m
+  );
+  setLocalItem(STORAGE_KEYS.MEMBERS, updated);
+  return true;
+}
+
 export async function deleteMember(id: string): Promise<boolean> {
   if (isSupabaseConfigured && supabase) {
     try {
