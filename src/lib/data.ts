@@ -178,15 +178,13 @@ export const INITIAL_TRAINERS: Trainer[] = [
 // ==============================================================================
 
 export const INITIAL_SCHEDULES: Schedule[] = [
-  // --- SABTU 07.00 ---
-  { id: 'sch-sat-0700-hyrox', classId: 'class-hyrox', trainerId: 'trainer-aris', dayOfWeek: 6, startTime: '07:00', endTime: '08:15', maxCapacity: 16, price: 75000, isActive: true },
-
   // --- 08.30 (SENIN - SABTU): STRIKING ---
   { id: 'sch-mon-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 1, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
   { id: 'sch-tue-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 2, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
   { id: 'sch-wed-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 3, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
   { id: 'sch-thu-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 4, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
   { id: 'sch-fri-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 5, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
+  { id: 'sch-sat-0700-hyrox', classId: 'class-hyrox', trainerId: 'trainer-aris', dayOfWeek: 6, startTime: '07:00', endTime: '08:15', maxCapacity: 16, price: 75000, isActive: true },
   { id: 'sch-sat-0830-striking', classId: 'class-striking', trainerId: 'trainer-mahaji', dayOfWeek: 6, startTime: '08:30', endTime: '09:45', maxCapacity: 15, price: 75000, isActive: true },
 
   // --- 10.00 (SENIN - SABTU): STRIKING + YOGA IF (SENIN) + BJJ KIDS (MINGGU) ---

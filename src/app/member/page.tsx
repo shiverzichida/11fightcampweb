@@ -162,7 +162,8 @@ export default function MemberPortalPage() {
       const matchPhone = normMemberPhone && (normMemberPhone === normInputPhone || normMemberPhone.includes(normInputPhone) || normInputPhone.includes(normMemberPhone));
       const matchUsername = m.username?.toLowerCase() === cleanInput;
       const matchMemberCode = m.memberCode?.toLowerCase() === cleanInput;
-      return matchPhone || matchUsername || matchMemberCode;
+      const matchEmail = m.email?.toLowerCase().trim() === cleanInput;
+      return matchPhone || matchUsername || matchMemberCode || matchEmail;
     });
 
     if (!found) {

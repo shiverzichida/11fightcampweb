@@ -177,13 +177,15 @@ function BookingContent() {
 
   const currentDayOfWeek = selectedDate ? new Date(selectedDate).getDay() : 1;
 
-  const availableSchedules = schedules.filter((s) => {
-    if (s.dayOfWeek !== currentDayOfWeek || !s.isActive) return false;
-    if (preselectedCategory && preselectedCategory !== 'all') {
-      return s.classData?.category === preselectedCategory;
-    }
-    return true;
-  });
+  const availableSchedules = schedules
+    .filter((s) => {
+      if (s.dayOfWeek !== currentDayOfWeek || !s.isActive) return false;
+      if (preselectedCategory && preselectedCategory !== 'all') {
+        return s.classData?.category === preselectedCategory;
+      }
+      return true;
+    })
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
   // Verify Member Account for Quota Booking
   const handleVerifyMember = (e: React.FormEvent) => {

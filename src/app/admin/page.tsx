@@ -151,6 +151,10 @@ export default function AdminPage() {
   const [memberPage, setMemberPage] = useState(1);
   const memberPageSize = 10;
 
+  // Filter state for schedules
+  const [scheduleDayFilter, setScheduleDayFilter] = useState<'all' | number>('all');
+  const [scheduleSearchQuery, setScheduleSearchQuery] = useState('');
+
   // Schedule detail participant modal
   const [selectedScheduleForDetail, setSelectedScheduleForDetail] = useState<Schedule | null>(null);
   const [detailDateFilter, setDetailDateFilter] = useState<string>('all');
@@ -431,6 +435,27 @@ export default function AdminPage() {
     }
     return true;
   });
+
+  // Filter Schedules
+  const filteredSchedules = schedules
+    .filter((s) => {
+      if (scheduleDayFilter !== 'all' && s.dayOfWeek !== scheduleDayFilter) return false;
+      if (scheduleSearchQuery.trim()) {
+        const q = scheduleSearchQuery.toLowerCase();
+        const matchClass = s.classData?.title?.toLowerCase().includes(q);
+        const matchCategory = s.classData?.category?.toLowerCase().includes(q);
+        const matchTrainer = s.trainerData?.name?.toLowerCase().includes(q);
+        const matchDay = DAYS[s.dayOfWeek]?.toLowerCase().includes(q);
+        return matchClass || matchCategory || matchTrainer || matchDay;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const dayA = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
+      const dayB = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
+      if (dayA !== dayB) return dayA - dayB;
+      return a.startTime.localeCompare(b.startTime);
+    });
 
   // Helper for Upcoming Class Date
   const getNextDateForDay = (dayOfWeek: number) => {
@@ -1124,117 +1149,163 @@ export default function AdminPage() {
 
         {/* TAB 3: SCHEDULES MANAGEMENT */}
         {activeTab === 'schedules' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {schedules.map((sch) => {
-                const nextDate = getNextDateForDay(sch.dayOfWeek);
-                const schBookings = bookings.filter((b) => b.scheduleId === sch.id);
-                const activeBookings = schBookings.filter((b) => b.status !== 'cancelled');
+          <div className="space-y-4">
+            {/* Filter and Search for Schedules */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-900/50 p-3 rounded-2xl border border-zinc-800">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari kelas, coach, hari..."
+                  value={scheduleSearchQuery}
+                  onChange={(e) => setScheduleSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-zinc-700 text-xs text-white focus:outline-none focus:border-[#ba2d1d]"
+                />
+              </div>
 
-                return (
-                  <div
-                    key={sch.id}
-                    className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
-                      sch.isActive
-                        ? 'bg-zinc-900/80 border-zinc-800'
-                        : 'bg-zinc-950/50 border-zinc-800/50 opacity-60'
-                    }`}
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-900/50 uppercase">
-                              {DAYS[sch.dayOfWeek]}
+              <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                <button
+                  onClick={() => setScheduleDayFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors shrink-0 ${
+                    scheduleDayFilter === 'all'
+                      ? 'bg-zinc-200 text-black font-bold'
+                      : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                  }`}
+                >
+                  Semua Hari ({schedules.length})
+                </button>
+                {[1, 2, 3, 4, 5, 6, 0].map((d) => {
+                  const count = schedules.filter((s) => s.dayOfWeek === d).length;
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => setScheduleDayFilter(d)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors shrink-0 ${
+                        scheduleDayFilter === d
+                          ? 'bg-zinc-200 text-black font-bold'
+                          : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                      }`}
+                    >
+                      {DAYS[d]} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {filteredSchedules.length === 0 ? (
+              <div className="p-12 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-400 text-xs space-y-3">
+                <Calendar className="w-8 h-8 text-zinc-600 mx-auto" />
+                <p>Tidak ada jadwal yang sesuai dengan filter atau pencarian.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredSchedules.map((sch) => {
+                  const nextDate = getNextDateForDay(sch.dayOfWeek);
+                  const schBookings = bookings.filter((b) => b.scheduleId === sch.id);
+                  const activeBookings = schBookings.filter((b) => b.status !== 'cancelled');
+
+                  return (
+                    <div
+                      key={sch.id}
+                      className={`p-5 rounded-2xl border transition-all flex flex-col justify-between space-y-4 ${
+                        sch.isActive
+                          ? 'bg-zinc-900/80 border-zinc-800'
+                          : 'bg-zinc-950/50 border-zinc-800/50 opacity-60'
+                      }`}
+                    >
+                      <div className="space-y-2.5">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-900/50 uppercase">
+                                {DAYS[sch.dayOfWeek]}
+                              </span>
+                              <span className="text-[10px] font-semibold text-zinc-400">
+                                {sch.startTime} - {sch.endTime} WIB
+                              </span>
+                            </div>
+                            <h3 className="text-base font-black text-white mt-1.5">
+                              {sch.classData?.title || 'Sesi Bela Diri'}
+                            </h3>
+                            <p className="text-xs text-zinc-400">
+                              Coach: <strong className="text-zinc-300">{sch.trainerData?.name}</strong>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Tanggal Kelas & Info Peserta */}
+                        <div className="bg-black/50 p-2.5 rounded-xl border border-zinc-800 space-y-1.5 text-xs">
+                          <div className="flex items-center justify-between text-zinc-300">
+                            <span className="flex items-center gap-1 text-rose-400 font-semibold text-[11px]">
+                              <Calendar className="w-3.5 h-3.5" />
+                              Tanggal Sesi:
                             </span>
-                            <span className="text-[10px] font-semibold text-zinc-400">
-                              {sch.startTime} - {sch.endTime} WIB
+                            <strong className="text-white text-[11px] font-bold">{nextDate.formatted}</strong>
+                          </div>
+                          <div className="flex items-center justify-between text-zinc-400 text-[11px] pt-1 border-t border-zinc-800/60">
+                            <span>Kapasitas Peserta:</span>
+                            <span className="font-bold text-zinc-200">
+                              <strong className={activeBookings.length >= sch.maxCapacity ? 'text-rose-400' : 'text-emerald-400'}>
+                                {activeBookings.length}
+                              </strong>{' '}
+                              / {sch.maxCapacity} Terisi
                             </span>
                           </div>
-                          <h3 className="text-base font-black text-white mt-1.5">
-                            {sch.classData?.title || 'Sesi Bela Diri'}
-                          </h3>
-                          <p className="text-xs text-zinc-400">
-                            Coach: <strong className="text-zinc-300">{sch.trainerData?.name}</strong>
-                          </p>
-                        </div>
-
-                        <span className="text-xs font-bold text-amber-400">
-                          Rp {sch.price.toLocaleString('id-ID')}
-                        </span>
-                      </div>
-
-                      {/* Tanggal Kelas & Info Peserta */}
-                      <div className="bg-black/50 p-2.5 rounded-xl border border-zinc-800 space-y-1.5 text-xs">
-                        <div className="flex items-center justify-between text-zinc-300">
-                          <span className="flex items-center gap-1 text-rose-400 font-semibold text-[11px]">
-                            <Calendar className="w-3.5 h-3.5" />
-                            Tanggal Sesi:
-                          </span>
-                          <strong className="text-white text-[11px] font-bold">{nextDate.formatted}</strong>
-                        </div>
-                        <div className="flex items-center justify-between text-zinc-400 text-[11px] pt-1 border-t border-zinc-800/60">
-                          <span>Kapasitas Peserta:</span>
-                          <span className="font-bold text-zinc-200">
-                            <strong className={activeBookings.length >= sch.maxCapacity ? 'text-rose-400' : 'text-emerald-400'}>
-                              {activeBookings.length}
-                            </strong>{' '}
-                            / {sch.maxCapacity} Terisi
-                          </span>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-2 pt-2 border-t border-zinc-800/80">
-                      {/* Tombol Masuk Detail Jadwal & Lihat Peserta */}
-                      <button
-                        onClick={() => {
-                          setSelectedScheduleForDetail(sch);
-                          setDetailDateFilter('all');
-                          setDetailSearchQuery('');
-                        }}
-                        className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-zinc-800 to-zinc-850 hover:from-zinc-700 hover:to-zinc-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all border border-zinc-700 active:scale-[0.98]"
-                      >
-                        <Users className="w-3.5 h-3.5 text-amber-400" />
-                        Detail & Peserta ({activeBookings.length})
-                      </button>
-
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="space-y-2 pt-2 border-t border-zinc-800/80">
+                        {/* Tombol Masuk Detail Jadwal & Lihat Peserta */}
                         <button
-                          onClick={() => handleToggleSchedule(sch.id, sch.isActive)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                            sch.isActive
-                              ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                              : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                          }`}
+                          onClick={() => {
+                            setSelectedScheduleForDetail(sch);
+                            setDetailDateFilter('all');
+                            setDetailSearchQuery('');
+                          }}
+                          className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-zinc-800 to-zinc-850 hover:from-zinc-700 hover:to-zinc-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all border border-zinc-700 active:scale-[0.98]"
                         >
-                          {sch.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                          <Users className="w-3.5 h-3.5 text-amber-400" />
+                          Detail & Peserta ({activeBookings.length})
                         </button>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center justify-between gap-2">
                           <button
-                            onClick={() => handleOpenEditSchedule(sch)}
-                            className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-colors border border-zinc-700"
-                            title="Edit Jadwal"
+                            onClick={() => handleToggleSchedule(sch.id, sch.isActive)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                              sch.isActive
+                                ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                                : 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                            }`}
                           >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Edit
+                            {sch.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                           </button>
 
-                          <button
-                            onClick={() => handleDeleteSchedule(sch.id)}
-                            className="p-2 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
-                            title="Hapus Jadwal"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditSchedule(sch)}
+                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-colors border border-zinc-700"
+                              title="Edit Jadwal"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteSchedule(sch.id)}
+                              className="p-2 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
+                              title="Hapus Jadwal"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

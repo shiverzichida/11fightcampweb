@@ -122,6 +122,14 @@ export async function fetchSchedules(): Promise<Schedule[]> {
     schedulesList = getLocalItem<Schedule[]>(STORAGE_KEYS.SCHEDULES, INITIAL_SCHEDULES);
   }
 
+  // Sort: Monday (1) -> Saturday (6) -> Sunday (0/7), then by startTime ascending
+  schedulesList.sort((a, b) => {
+    const dayA = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
+    const dayB = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
+    if (dayA !== dayB) return dayA - dayB;
+    return a.startTime.localeCompare(b.startTime);
+  });
+
   return schedulesList.map((s) => ({
     ...s,
     classData: classMap.get(s.classId),
