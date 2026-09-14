@@ -1,4 +1,4 @@
-import { ClassItem, Trainer, Schedule, Booking } from './types';
+import { ClassItem, Trainer, Schedule, Booking, Member } from './types';
 import { INITIAL_CLASSES, INITIAL_TRAINERS, INITIAL_SCHEDULES } from './data';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   TRAINERS: '11fc_trainers',
   SCHEDULES: '11fc_schedules',
   BOOKINGS: '11fc_bookings',
+  MEMBERS: '11fc_members',
 };
 
 // Helper for local storage access
@@ -311,3 +312,210 @@ export async function getBookedSeats(scheduleId: string, bookingDate: string): P
   );
   return confirmed.length;
 }
+
+// ==============================================================================
+// 5. MEMBERSHIP MANAGEMENT
+// ==============================================================================
+
+export async function fetchMembers(): Promise<Member[]> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        return data.map((m) => ({
+          id: m.id,
+          memberCode: m.member_code,
+          name: m.name,
+          phone: m.phone,
+          email: m.email || undefined,
+          planId: m.plan_id,
+          planTitle: m.plan_title,
+          price: m.price,
+          paymentMethod: m.payment_method,
+          paymentStatus: m.payment_status,
+          status: m.status,
+          startDate: m.start_date,
+          endDate: m.end_date,
+          remainingSessions: m.remaining_sessions ?? undefined,
+          totalSessions: m.total_sessions ?? undefined,
+          notes: m.notes || undefined,
+          createdAt: m.created_at,
+        }));
+      }
+    } catch (err) {
+      console.warn('Supabase fetch members error, falling back to local:', err);
+    }
+  }
+
+  return getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+}
+
+export async function saveNewMember(data: {
+  name: string;
+  phone: string;
+  email?: string;
+  planId: string;
+  planTitle: string;
+  price: number;
+  paymentMethod: 'cash' | 'transfer' | 'qris' | 'edc';
+  paymentStatus: 'pending' | 'paid';
+  startDate?: string;
+  durationDays?: number;
+  totalSessions?: number;
+  notes?: string;
+}): Promise<Member> {
+  const now = new Date();
+  const start = data.startDate ? new Date(data.startDate) : now;
+  const duration = data.durationDays || 30;
+  const end = new Date(start);
+  end.setDate(end.getDate() + duration);
+
+  const startFormatted = start.toISOString().split('T')[0];
+  const endFormatted = end.toISOString().split('T')[0];
+
+  const randomNum = Math.floor(100 + Math.random() * 900);
+  const memberCode = `11FC-M${randomNum}`;
+  const id = `member-${Date.now()}`;
+
+  const isPaid = data.paymentStatus === 'paid';
+  const memberStatus = isPaid ? 'active' : 'pending';
+
+  const newMember: Member = {
+    id,
+    memberCode,
+    name: data.name.trim(),
+    phone: data.phone.trim(),
+    email: data.email?.trim(),
+    planId: data.planId,
+    planTitle: data.planTitle,
+    price: data.price,
+    paymentMethod: data.paymentMethod,
+    paymentStatus: data.paymentStatus,
+    status: memberStatus,
+    startDate: startFormatted,
+    endDate: endFormatted,
+    remainingSessions: data.totalSessions,
+    totalSessions: data.totalSessions,
+    notes: data.notes,
+    createdAt: now.toISOString(),
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('members').insert({
+        id: newMember.id,
+        member_code: newMember.memberCode,
+        name: newMember.name,
+        phone: newMember.phone,
+        email: newMember.email || null,
+        plan_id: newMember.planId,
+        plan_title: newMember.planTitle,
+        price: newMember.price,
+        payment_method: newMember.paymentMethod,
+        payment_status: newMember.paymentStatus,
+        status: newMember.status,
+        start_date: newMember.startDate,
+        end_date: newMember.endDate,
+        remaining_sessions: newMember.remainingSessions || null,
+        total_sessions: newMember.totalSessions || null,
+        notes: newMember.notes || null,
+      });
+
+      if (!error) {
+        const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+        setLocalItem(STORAGE_KEYS.MEMBERS, [newMember, ...current]);
+        return newMember;
+      }
+    } catch (err) {
+      console.warn('Supabase save member error, saving locally:', err);
+    }
+  }
+
+  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+  const updated = [newMember, ...current];
+  setLocalItem(STORAGE_KEYS.MEMBERS, updated);
+  return newMember;
+}
+
+export async function updateMemberStatus(
+  id: string,
+  paymentStatus: 'pending' | 'paid' | 'cancelled',
+  status?: 'active' | 'pending' | 'expired' | 'inactive'
+): Promise<boolean> {
+  const finalStatus = status || (paymentStatus === 'paid' ? 'active' : paymentStatus === 'cancelled' ? 'inactive' : 'pending');
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase
+        .from('members')
+        .update({
+          payment_status: paymentStatus,
+          status: finalStatus,
+        })
+        .eq('id', id);
+
+      if (!error) return true;
+    } catch (err) {
+      console.warn('Supabase update member status error:', err);
+    }
+  }
+
+  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+  const updated = current.map((m) =>
+    m.id === id ? { ...m, paymentStatus, status: finalStatus } : m
+  );
+  setLocalItem(STORAGE_KEYS.MEMBERS, updated);
+  return true;
+}
+
+export async function decrementMemberSession(id: string): Promise<boolean> {
+  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+  const member = current.find((m) => m.id === id);
+  if (!member || typeof member.remainingSessions !== 'number' || member.remainingSessions <= 0) {
+    return false;
+  }
+
+  const newRemaining = member.remainingSessions - 1;
+  const newStatus = newRemaining === 0 ? 'expired' : member.status;
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      await supabase
+        .from('members')
+        .update({
+          remaining_sessions: newRemaining,
+          status: newStatus,
+        })
+        .eq('id', id);
+    } catch (err) {
+      console.warn('Supabase decrement member error:', err);
+    }
+  }
+
+  const updated = current.map((m) =>
+    m.id === id ? { ...m, remainingSessions: newRemaining, status: newStatus } : m
+  );
+  setLocalItem(STORAGE_KEYS.MEMBERS, updated);
+  return true;
+}
+
+export async function deleteMember(id: string): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('members').delete().eq('id', id);
+      if (!error) return true;
+    } catch (err) {
+      console.warn('Supabase delete member error:', err);
+    }
+  }
+
+  const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
+  const updated = current.filter((m) => m.id !== id);
+  setLocalItem(STORAGE_KEYS.MEMBERS, updated);
+  return true;
+}
+

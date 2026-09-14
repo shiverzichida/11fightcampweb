@@ -74,3 +74,24 @@ export interface MembershipPlan {
   features: string[];
   badge?: string;
 }
+
+export interface Member {
+  id: string;
+  memberCode: string; // e.g. 11FC-M001
+  name: string;
+  phone: string;
+  email?: string;
+  planId: string;
+  planTitle: string;
+  price: number;
+  paymentMethod: 'cash' | 'transfer' | 'qris' | 'edc';
+  paymentStatus: 'pending' | 'paid' | 'cancelled';
+  status: 'active' | 'pending' | 'expired' | 'inactive';
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  remainingSessions?: number; // for multi-session packages (e.g. 8x / 12x)
+  totalSessions?: number;
+  notes?: string;
+  createdAt: string;
+}
+

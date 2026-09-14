@@ -59,26 +59,52 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 5. MEMBERS (Membership Registration & Management)
+CREATE TABLE IF NOT EXISTS public.members (
+  id TEXT PRIMARY KEY,
+  member_code TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT,
+  plan_id TEXT NOT NULL,
+  plan_title TEXT NOT NULL,
+  price NUMERIC NOT NULL,
+  payment_method TEXT DEFAULT 'transfer', -- 'cash', 'transfer', 'qris', 'edc'
+  payment_status TEXT DEFAULT 'pending',  -- 'pending', 'paid', 'cancelled'
+  status TEXT DEFAULT 'pending',          -- 'active', 'pending', 'expired', 'inactive'
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  remaining_sessions INTEGER,
+  total_sessions INTEGER,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trainers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 
 -- Public Read Policies
 CREATE POLICY "Allow public read access on classes" ON public.classes FOR SELECT USING (true);
 CREATE POLICY "Allow public read access on trainers" ON public.trainers FOR SELECT USING (true);
 CREATE POLICY "Allow public read access on schedules" ON public.schedules FOR SELECT USING (true);
 CREATE POLICY "Allow public read access on bookings" ON public.bookings FOR SELECT USING (true);
+CREATE POLICY "Allow public read access on members" ON public.members FOR SELECT USING (true);
 
--- Public Insert for Bookings (Guests can book classes)
+-- Public Insert for Bookings & Members (Guests can register)
 CREATE POLICY "Allow public insert on bookings" ON public.bookings FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public insert on members" ON public.members FOR INSERT WITH CHECK (true);
 
 -- Allow authenticated users (Admin) full access
 CREATE POLICY "Allow authenticated full access on classes" ON public.classes FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow authenticated full access on trainers" ON public.trainers FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow authenticated full access on schedules" ON public.schedules FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow authenticated full access on bookings" ON public.bookings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated full access on members" ON public.members FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 
 -- ==============================================================================
 -- OFFICIAL SEED DATA - 11TH UNIVERSE MMA

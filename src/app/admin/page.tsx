@@ -4,16 +4,22 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { Schedule, Booking, ClassItem, Trainer } from '@/lib/types';
+import { Schedule, Booking, ClassItem, Trainer, Member } from '@/lib/types';
+import { MEMBERSHIP_PLANS } from '@/lib/data';
 import {
   fetchSchedules,
   fetchBookings,
   fetchClasses,
   fetchTrainers,
+  fetchMembers,
   saveNewSchedule,
   deleteSchedule,
   toggleScheduleStatus,
   updateBookingStatus,
+  saveNewMember,
+  updateMemberStatus,
+  decrementMemberSession,
+  deleteMember,
 } from '@/lib/storage';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import {
@@ -31,16 +37,24 @@ import {
   AlertCircle,
   Database,
   Search,
+  CreditCard,
+  Award,
+  UserPlus,
+  Phone,
+  DollarSign,
+  Sparkles,
+  MinusCircle,
 } from 'lucide-react';
 
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<'bookings' | 'schedules' | 'stats'>('bookings');
+  const [activeTab, setActiveTab] = useState<'bookings' | 'schedules' | 'members'>('bookings');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [trainers, setTrainers] = useState<Trainer[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
   // New Schedule Modal / Form State
@@ -54,24 +68,42 @@ export default function AdminPage() {
   const [newPrice, setNewPrice] = useState<number>(75000);
   const [isSaving, setIsSaving] = useState(false);
 
+  // New Member Modal / Form State
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [memberName, setMemberName] = useState('');
+  const [memberPhone, setMemberPhone] = useState('');
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberPlanId, setMemberPlanId] = useState('pack-10');
+  const [memberPaymentMethod, setMemberPaymentMethod] = useState<'transfer' | 'cash' | 'qris' | 'edc'>('transfer');
+  const [memberPaymentStatus, setMemberPaymentStatus] = useState<'paid' | 'pending'>('paid');
+  const [memberStartDate, setMemberStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [memberNotes, setMemberNotes] = useState('');
+  const [isSavingMember, setIsSavingMember] = useState(false);
+
   // Filter state for bookings
   const [bookingFilter, setBookingFilter] = useState<'all' | 'confirmed' | 'attended' | 'cancelled'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter state for members
+  const [memberFilter, setMemberFilter] = useState<'all' | 'active' | 'pending' | 'expired' | 'inactive'>('all');
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
 
   // Load all data
   const loadData = async () => {
     try {
       setLoading(true);
-      const [schedulesData, bookingsData, classesData, trainersData] = await Promise.all([
+      const [schedulesData, bookingsData, classesData, trainersData, membersData] = await Promise.all([
         fetchSchedules(),
         fetchBookings(),
         fetchClasses(),
         fetchTrainers(),
+        fetchMembers(),
       ]);
       setSchedules(schedulesData);
       setBookings(bookingsData);
       setClasses(classesData);
       setTrainers(trainersData);
+      setMembers(membersData);
 
       if (classesData.length > 0) setNewClassId(classesData[0].id);
       if (trainersData.length > 0) setNewTrainerId(trainersData[0].id);
@@ -114,6 +146,75 @@ export default function AdminPage() {
     }
   };
 
+  // Handle Add Member
+  const handleCreateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberName.trim() || !memberPhone.trim()) return;
+
+    const selectedPlan = MEMBERSHIP_PLANS.find((p) => p.id === memberPlanId) || MEMBERSHIP_PLANS[1];
+    let durationDays = 30;
+    let totalSessions: number | undefined = undefined;
+
+    if (selectedPlan.id === 'pack-10') {
+      durationDays = 45;
+      totalSessions = 10;
+    } else if (selectedPlan.id === 'private-pack') {
+      durationDays = 45;
+      totalSessions = 5;
+    } else if (selectedPlan.id === 'unlimited-monthly') {
+      durationDays = 30;
+    }
+
+    setIsSavingMember(true);
+    try {
+      await saveNewMember({
+        name: memberName,
+        phone: memberPhone,
+        email: memberEmail || undefined,
+        planId: selectedPlan.id,
+        planTitle: selectedPlan.title,
+        price: selectedPlan.price,
+        paymentMethod: memberPaymentMethod,
+        paymentStatus: memberPaymentStatus,
+        startDate: memberStartDate,
+        durationDays,
+        totalSessions,
+        notes: memberNotes || undefined,
+      });
+
+      await loadData();
+      setShowAddMemberModal(false);
+      setMemberName('');
+      setMemberPhone('');
+      setMemberEmail('');
+      setMemberNotes('');
+    } catch (err) {
+      console.error(err);
+      alert('Gagal mendaftarkan member');
+    } finally {
+      setIsSavingMember(false);
+    }
+  };
+
+  // Handle Member Status Update (Confirm Payment)
+  const handleConfirmMemberPayment = async (memberId: string) => {
+    await updateMemberStatus(memberId, 'paid', 'active');
+    await loadData();
+  };
+
+  // Handle Decrement Member Session
+  const handleDecrementSession = async (memberId: string) => {
+    await decrementMemberSession(memberId);
+    await loadData();
+  };
+
+  // Handle Delete Member
+  const handleDeleteMember = async (memberId: string) => {
+    if (!confirm('Yakin ingin menghapus data member ini?')) return;
+    await deleteMember(memberId);
+    await loadData();
+  };
+
   // Handle Toggle Schedule Active
   const handleToggleSchedule = async (id: string, currentStatus: boolean) => {
     await toggleScheduleStatus(id, !currentStatus);
@@ -146,10 +247,31 @@ export default function AdminPage() {
     return true;
   });
 
+  // Filter Members
+  const filteredMembers = members.filter((m) => {
+    if (memberFilter !== 'all' && m.status !== memberFilter) return false;
+    if (memberSearchQuery.trim()) {
+      const q = memberSearchQuery.toLowerCase();
+      const matchName = m.name.toLowerCase().includes(q);
+      const matchCode = m.memberCode.toLowerCase().includes(q);
+      const matchPhone = m.phone.includes(q);
+      const matchPlan = m.planTitle.toLowerCase().includes(q);
+      return matchName || matchCode || matchPhone || matchPlan;
+    }
+    return true;
+  });
+
   // Calculate Metrics
-  const totalRevenue = bookings
+  const bookingRevenue = bookings
     .filter((b) => b.status === 'attended' || b.status === 'confirmed')
     .reduce((acc, curr) => acc + (curr.scheduleData?.price || 75000), 0);
+
+  const memberRevenue = members
+    .filter((m) => m.paymentStatus === 'paid')
+    .reduce((acc, curr) => acc + curr.price, 0);
+
+  const totalRevenue = bookingRevenue + memberRevenue;
+  const activeMembersCount = members.filter((m) => m.status === 'active').length;
 
   return (
     <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col">
@@ -167,27 +289,34 @@ export default function AdminPage() {
               </strong>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
-              PANEL ADMIN & MANAJEMEN JADWAL
+              PANEL ADMIN & OPERASIONAL 11FC
             </h1>
             <p className="text-xs text-zinc-400">
-              Kelola jadwal sesi latihan mingguan dan pantau daftar booking peserta 11 Fight Camp.
+              Kelola jadwal sesi mingguan, pantau booking peserta, dan konfirmasi manual pembelian paket membership.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setShowAddMemberModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-lg"
+            >
+              <UserPlus className="w-4 h-4" />
+              + Registrasi Member
+            </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-fire text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-lg"
             >
               <Plus className="w-4 h-4" />
-              Tambah Jadwal Baru
+              Tambah Jadwal
             </button>
             <Link
               href="/booking"
               target="_blank"
               className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs transition-colors"
             >
-              Lihat Tampilan Booking
+              Tampilan Booking
             </Link>
           </div>
         </div>
@@ -200,7 +329,18 @@ export default function AdminPage() {
               <Users className="w-4 h-4 text-rose-500" />
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white">{bookings.length}</div>
-            <span className="text-[11px] text-zinc-500">Reservasi terdaftar</span>
+            <span className="text-[11px] text-zinc-500">Reservasi drop-in</span>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
+            <div className="flex items-center justify-between text-zinc-400 mb-2">
+              <span className="text-xs font-bold uppercase">Member Aktif</span>
+              <Award className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400">
+              {activeMembersCount}
+            </div>
+            <span className="text-[11px] text-zinc-500">Dari {members.length} member terdaftar</span>
           </div>
 
           <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
@@ -216,32 +356,21 @@ export default function AdminPage() {
 
           <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
             <div className="flex items-center justify-between text-zinc-400 mb-2">
-              <span className="text-xs font-bold uppercase">Hadir (Attended)</span>
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-400">
-              {bookings.filter((b) => b.status === 'attended').length}
-            </div>
-            <span className="text-[11px] text-zinc-500">Telah hadir di sasana</span>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800">
-            <div className="flex items-center justify-between text-zinc-400 mb-2">
-              <span className="text-xs font-bold uppercase">Estimasi Revenue</span>
+              <span className="text-xs font-bold uppercase">Total Estimasi Omset</span>
               <TrendingUp className="w-4 h-4 text-blue-400" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-white">
               Rp {totalRevenue.toLocaleString('id-ID')}
             </div>
-            <span className="text-[11px] text-zinc-500">Dari sesi booking aktif</span>
+            <span className="text-[11px] text-zinc-500">Booking + Paket Member Lunas</span>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-zinc-800 pb-3 mb-6">
+        <div className="flex items-center gap-2 border-b border-zinc-800 pb-3 mb-6 overflow-x-auto">
           <button
             onClick={() => setActiveTab('bookings')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'bookings'
                 ? 'btn-fire text-white shadow-md'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
@@ -250,8 +379,18 @@ export default function AdminPage() {
             Daftar Reservasi ({bookings.length})
           </button>
           <button
+            onClick={() => setActiveTab('members')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+              activeTab === 'members'
+                ? 'btn-fire text-white shadow-md'
+                : 'bg-zinc-900 text-zinc-400 hover:text-white'
+            }`}
+          >
+            Manajemen Member ({members.length})
+          </button>
+          <button
             onClick={() => setActiveTab('schedules')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'schedules'
                 ? 'btn-fire text-white shadow-md'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
@@ -394,7 +533,186 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* TAB 2: SCHEDULES MANAGEMENT */}
+        {/* TAB 2: MEMBERSHIP MANAGEMENT */}
+        {activeTab === 'members' && (
+          <div className="space-y-4">
+            {/* Filter and Search */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-zinc-900/50 p-3 rounded-2xl border border-zinc-800">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari nama member, kode, paket..."
+                  value={memberSearchQuery}
+                  onChange={(e) => setMemberSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-zinc-700 text-xs text-white focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+                {(['all', 'active', 'pending', 'expired', 'inactive'] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setMemberFilter(st)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors shrink-0 ${
+                      memberFilter === st
+                        ? 'bg-zinc-200 text-black font-bold'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                    }`}
+                  >
+                    {st === 'all'
+                      ? 'Semua Member'
+                      : st === 'pending'
+                      ? '⏳ Menunggu Konfirmasi'
+                      : st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Table of Members */}
+            {loading ? (
+              <div className="py-12 text-center text-zinc-500 text-xs">Memuat data membership...</div>
+            ) : filteredMembers.length === 0 ? (
+              <div className="p-12 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-400 text-xs space-y-3">
+                <Award className="w-8 h-8 text-zinc-600 mx-auto" />
+                <p>Belum ada data member yang sesuai filter.</p>
+                <button
+                  onClick={() => setShowAddMemberModal(true)}
+                  className="px-4 py-2 rounded-xl btn-fire text-white font-bold text-xs inline-flex items-center gap-1.5"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Registrasi Member Pertama
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-2xl border border-zinc-800">
+                <table className="w-full text-left text-xs text-zinc-300">
+                  <thead className="bg-zinc-950 text-[11px] font-bold text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
+                    <tr>
+                      <th className="py-3 px-4">ID Member</th>
+                      <th className="py-3 px-4">Nama & WhatsApp</th>
+                      <th className="py-3 px-4">Paket Membership</th>
+                      <th className="py-3 px-4">Pembayaran</th>
+                      <th className="py-3 px-4">Masa Aktif / Kuota</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Aksi Konfirmasi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800 bg-zinc-900/40">
+                    {filteredMembers.map((m) => (
+                      <tr key={m.id} className="hover:bg-zinc-800/40 transition-colors">
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-amber-400 text-xs bg-amber-950/60 px-2 py-0.5 rounded border border-amber-900/50">
+                            {m.memberCode}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-white">{m.name}</div>
+                          <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-0.5">
+                            <a
+                              href={`https://wa.me/${m.phone.replace(/[^0-9]/g, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-400 hover:underline inline-flex items-center gap-1 font-mono"
+                            >
+                              <Phone className="w-3 h-3" />
+                              {m.phone}
+                            </a>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-zinc-200">{m.planTitle}</div>
+                          <div className="text-[11px] text-amber-400 font-semibold">
+                            Rp {m.price.toLocaleString('id-ID')}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1 text-[11px] capitalize text-zinc-300">
+                            <CreditCard className="w-3 h-3 text-zinc-400" />
+                            {m.paymentMethod}
+                          </div>
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase mt-1 ${
+                              m.paymentStatus === 'paid'
+                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50'
+                                : 'bg-amber-950 text-amber-400 border border-amber-800/50'
+                            }`}
+                          >
+                            {m.paymentStatus === 'paid' ? '✓ Lunas' : '⏳ Pending'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-[11px] text-zinc-300">
+                            {m.startDate} s/d {m.endDate}
+                          </div>
+                          {typeof m.remainingSessions === 'number' && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] font-bold text-amber-400 bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-800">
+                                Sisa: {m.remainingSessions} / {m.totalSessions} sesi
+                              </span>
+                              {m.remainingSessions > 0 && (
+                                <button
+                                  onClick={() => handleDecrementSession(m.id)}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold"
+                                  title="Potong 1 sesi saat member latihan"
+                                >
+                                  -1 Sesi
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                              m.status === 'active'
+                                ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
+                                : m.status === 'expired'
+                                ? 'bg-red-950/80 text-red-400 border border-red-800/50'
+                                : m.status === 'pending'
+                                ? 'bg-amber-950/80 text-amber-400 border border-amber-800/50 animate-pulse'
+                                : 'bg-zinc-800 text-zinc-400'
+                            }`}
+                          >
+                            {m.status === 'active'
+                              ? 'Aktif'
+                              : m.status === 'pending'
+                              ? 'Menunggu Bayar'
+                              : m.status}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {m.paymentStatus === 'pending' && (
+                              <button
+                                onClick={() => handleConfirmMemberPayment(m.id)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1"
+                                title="Konfirmasi Pembayaran Lunas"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                Konfirmasi Lunas
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteMember(m.id)}
+                              className="p-1.5 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
+                              title="Hapus Member"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: SCHEDULES MANAGEMENT */}
         {activeTab === 'schedules' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -457,6 +775,164 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: TAMBAH MEMBER BARU */}
+        {showAddMemberModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-lg font-black text-white uppercase">Registrasi Member Baru</h3>
+                </div>
+                <button
+                  onClick={() => setShowAddMemberModal(false)}
+                  className="p-1 rounded-lg text-zinc-400 hover:text-white"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateMember} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                    Nama Lengkap Member *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Alexander Pratama"
+                    value={memberName}
+                    onChange={(e) => setMemberName(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      No. WhatsApp (Aktif) *
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="08123456789"
+                      value={memberPhone}
+                      onChange={(e) => setMemberPhone(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Email (Opsional)
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="member@email.com"
+                      value={memberEmail}
+                      onChange={(e) => setMemberEmail(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                    Pilih Paket Membership *
+                  </label>
+                  <select
+                    value={memberPlanId}
+                    onChange={(e) => setMemberPlanId(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    required
+                  >
+                    {MEMBERSHIP_PLANS.filter((p) => p.id !== 'drop-in').map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} - Rp {p.price.toLocaleString('id-ID')} ({p.period})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Metode Pembayaran
+                    </label>
+                    <select
+                      value={memberPaymentMethod}
+                      onChange={(e) => setMemberPaymentMethod(e.target.value as any)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="transfer">Bank Transfer</option>
+                      <option value="cash">Tunai / Cash</option>
+                      <option value="qris">QRIS</option>
+                      <option value="edc">Mesin EDC / Debit</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Status Bayar
+                    </label>
+                    <select
+                      value={memberPaymentStatus}
+                      onChange={(e) => setMemberPaymentStatus(e.target.value as any)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="paid">✓ Langsung Lunas (Aktif)</option>
+                      <option value="pending">⏳ Menunggu Pembayaran</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                    Tanggal Mulai Member
+                  </label>
+                  <input
+                    type="date"
+                    value={memberStartDate}
+                    onChange={(e) => setMemberStartDate(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                    Catatan Khusus (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Titip struk transfer / nomor loker"
+                    value={memberNotes}
+                    onChange={(e) => setMemberNotes(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddMemberModal(false)}
+                    className="w-1/2 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingMember}
+                    className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg"
+                  >
+                    {isSavingMember ? 'Menyimpan...' : 'Simpan & Aktifkan'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -613,3 +1089,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
