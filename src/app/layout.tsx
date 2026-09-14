@@ -13,10 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: '11 Fight Camp Pontianak | Muay Thai, Boxing, BJJ, MMA & Combat Fitness',
+  title: '11th Universe MMA | 11 Fight Camp Pontianak',
   description:
-    'Sasana beladiri dan combat fitness nomor satu di Pontianak, Kalimantan Barat. Kelas Muay Thai, Boxing, Brazilian Jiu-Jitsu (BJJ), MMA, dan Private Coaching.',
+    'Sasana beladiri dan combat fitness nomor satu di Pontianak, Kalimantan Barat. Kelas Striking, Boxing, Brazilian Jiu-Jitsu (BJJ), MMA, Hyrox, dan Private Coaching.',
   keywords: [
+    '11th Universe MMA',
     '11 Fight Camp',
     '11fightcamp',
     'Muay Thai Pontianak',
@@ -26,11 +27,16 @@ export const metadata: Metadata = {
     'Tempat Tinju Pontianak',
     'Gym Bela Diri Pontianak',
   ],
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
   openGraph: {
-    title: '11 Fight Camp Pontianak | Sasana Muay Thai & Beladiri',
+    title: '11th Universe MMA | 11 Fight Camp Pontianak',
     description: 'Forge Your Body. Master The Art of Combat. Booking kelas latihan bela diri online di Pontianak.',
     url: 'https://11fightcamp.com',
-    siteName: '11 Fight Camp',
+    siteName: '11th Universe MMA',
     locale: 'id_ID',
     type: 'website',
   },
