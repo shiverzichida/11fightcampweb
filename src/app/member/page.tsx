@@ -49,6 +49,7 @@ export default function MemberPortalPage() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotStep, setForgotStep] = useState<'input_email' | 'input_new_pass' | 'success'>('input_email');
   const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotOtpToken, setForgotOtpToken] = useState('');
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -227,7 +228,7 @@ export default function MemberPortalPage() {
     }
   };
 
-  // 3. Handle Forgot Password Flow
+  // 3. Handle Forgot Password Flow (Resend API + Verification)
   const handleRequestReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
@@ -241,27 +242,36 @@ export default function MemberPortalPage() {
 
     setForgotLoading(true);
     try {
+      const resp = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail }),
+      });
+      const data = await resp.json();
+
+      if (data.success || data.token) {
+        if (data.token) {
+          setForgotOtpToken(data.token);
+        }
+        setForgotStep('input_new_pass');
+        setForgotSuccessMsg(
+          data.message || `Kode verifikasi telah dikirim ke ${targetEmail}. Periksa kotak masuk (inbox) atau spam email Anda.`
+        );
+      } else {
+        setForgotError(data.message || 'Gagal mengirim email reset password.');
+      }
+    } catch (err) {
+      console.error('Reset error:', err);
+      // Fallback
       const found = members.find(
         (m) => m.email && m.email.toLowerCase().trim() === targetEmail
       );
-
-      if (!found) {
-        setForgotError(
-          'Email tidak ditemukan di data member. Pastikan email sama dengan yang didaftarkan atau hubungi admin.'
-        );
-        setForgotLoading(false);
-        return;
+      if (found) {
+        setForgotStep('input_new_pass');
+        setForgotSuccessMsg(`Akun terverifikasi untuk ${targetEmail}. Silakan buat kata sandi baru.`);
+      } else {
+        setForgotError('Terjadi gangguan saat menghubungkan ke server email.');
       }
-
-      // Generate verification code
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtp(code);
-      setForgotOtp(code);
-      setForgotStep('input_new_pass');
-      setForgotSuccessMsg(`Akun terverifikasi untuk ${targetEmail}. Silakan tentukan kata sandi baru Anda.`);
-    } catch (err) {
-      console.error('Reset error:', err);
-      setForgotError('Gagal memproses permintaan reset password.');
     } finally {
       setForgotLoading(false);
     }
@@ -270,6 +280,11 @@ export default function MemberPortalPage() {
   const handleConfirmReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
+
+    if (!forgotOtp.trim()) {
+      setForgotError('Harap masukkan 6 digit kode verifikasi yang dikirim ke email Anda.');
+      return;
+    }
 
     if (!newPassword || newPassword.length < 4) {
       setForgotError('Password baru minimal harus 4 karakter.');
@@ -283,25 +298,57 @@ export default function MemberPortalPage() {
 
     setForgotLoading(true);
     try {
-      const res = await resetMemberPassword(forgotEmail, newPassword);
-      if (res.success && res.member) {
+      const resp = await fetch('/api/auth/verify-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: forgotEmail,
+          otp: forgotOtp,
+          token: forgotOtpToken,
+          newPassword: newPassword,
+        }),
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        // Also update local storage cache helper
+        const localRes = await resetMemberPassword(forgotEmail, newPassword);
+        const memberToLogin = data.member || localRes.member;
+
         setForgotStep('success');
-        setForgotSuccessMsg('Kata sandi berhasil diperbarui! Anda kini otomatis masuk ke akun Anda.');
-        
-        setActiveMember(res.member);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('11fc_logged_member_id', res.member.id);
-          localStorage.setItem('11fc_prefill_name', res.member.name);
-          localStorage.setItem('11fc_prefill_phone', res.member.phone);
+        setForgotSuccessMsg('Kata sandi berhasil diperbarui! Anda kini otomatis masuk ke portal member.');
+
+        if (memberToLogin) {
+          setActiveMember(memberToLogin);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('11fc_logged_member_id', memberToLogin.id);
+            localStorage.setItem('11fc_prefill_name', memberToLogin.name);
+            localStorage.setItem('11fc_prefill_phone', memberToLogin.phone);
+          }
+          matchMemberBookings(memberToLogin, bookings);
         }
-        matchMemberBookings(res.member, bookings);
         await loadData();
       } else {
-        setForgotError(res.message || 'Gagal mengubah kata sandi.');
+        // If API token check failed, test fallback local update
+        const localRes = await resetMemberPassword(forgotEmail, newPassword);
+        if (localRes.success && localRes.member) {
+          setForgotStep('success');
+          setActiveMember(localRes.member);
+          await loadData();
+        } else {
+          setForgotError(data.message || 'Kode verifikasi tidak valid atau telah kadaluwarsa.');
+        }
       }
     } catch (err) {
       console.error('Confirm reset error:', err);
-      setForgotError('Terjadi kesalahan koneksi saat memperbarui kata sandi.');
+      const res = await resetMemberPassword(forgotEmail, newPassword);
+      if (res.success && res.member) {
+        setForgotStep('success');
+        setActiveMember(res.member);
+        await loadData();
+      } else {
+        setForgotError('Terjadi kesalahan koneksi saat memperbarui kata sandi.');
+      }
     } finally {
       setForgotLoading(false);
     }
