@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Member, Booking, MembershipPlan } from '@/lib/types';
@@ -914,14 +915,14 @@ export default function MemberPortalPage() {
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-black to-zinc-950 border-2 border-[#ba2d1d] p-5 sm:p-8">
               {/* Watermark Logo in Background */}
               <div className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 pointer-events-none">
-                <img src="/logo.png" alt="11 Fight Camp Watermark" className="w-full h-full object-contain" />
+                <Image src="/logo.png" alt="11 Fight Camp Watermark" width={192} height={192} className="w-full h-full object-contain" />
               </div>
 
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-[#ba2d1d] bg-black shrink-0">
-                      <img src="/logo.png" alt="11 Fight Camp" className="w-full h-full object-cover" />
+                      <Image src="/logo.png" alt="11 Fight Camp" width={48} height={48} className="w-full h-full object-cover" />
                     </div>
                     <div>
                       <span className="text-[10px] sm:text-xs font-black tracking-widest text-[#d63725] uppercase block">

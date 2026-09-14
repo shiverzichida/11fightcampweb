@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { INITIAL_TRAINERS } from '@/lib/data';
 import { Award, ShieldCheck } from 'lucide-react';
 
@@ -29,10 +30,12 @@ export default function Trainers() {
             >
               {/* Photo */}
               <div className="relative h-72 overflow-hidden">
-                <img
+                <Image
                   src={coach.photoUrl}
                   alt={coach.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
                 <span className="absolute bottom-3 left-4 px-3 py-1 rounded-lg text-xs font-bold bg-black/80 backdrop-blur-md text-amber-400 border border-amber-900/50">

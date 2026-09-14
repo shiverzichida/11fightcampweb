@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Flame, Calendar, ArrowRight, MapPin, MessageSquare } from 'lucide-react';
 import { GYM_INFO } from '@/lib/data';
 
@@ -29,11 +30,18 @@ export default function Hero() {
 
   return (
     <section className="relative min-h-[92vh] flex flex-col justify-between overflow-hidden bg-black border-b border-zinc-800 w-full">
-      {/* 1. Fullpage MMA Fight Camp Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-100"
-        style={{ backgroundImage: "url('/hero-full-bg.jpg')" }}
-      />
+      {/* 1. Fullpage MMA Fight Camp Background Image with Next.js Priority LCP Optimization */}
+      <div className="absolute inset-0 transition-transform duration-1000 scale-100 -z-10">
+        <Image
+          src="/hero-full-bg.jpg"
+          alt="11 Fight Camp Pontianak Gym and Cage"
+          fill
+          priority
+          quality={80}
+          sizes="100vw"
+          className="object-cover"
+        />
+      </div>
 
       {/* 2. Cinematic Lighting & Gradient Overlays for High Legibility */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#08090b]/90 via-[#08090b]/50 to-[#08090b]" />
@@ -45,9 +53,12 @@ export default function Hero() {
         {/* Official 11th Universe Logo */}
         <div className="mb-4 sm:mb-6 relative group">
           <div className="relative w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 sm:border-3 border-[#ba2d1d] bg-black p-0.5">
-            <img
+            <Image
               src="/logo.png"
               alt="11th Universe MMA Official Emblem"
+              width={128}
+              height={128}
+              priority
               className="w-full h-full object-cover rounded-full"
             />
           </div>

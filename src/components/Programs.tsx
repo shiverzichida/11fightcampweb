@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { INITIAL_CLASSES } from '@/lib/data';
 import { Flame, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Category } from '@/lib/types';
@@ -67,10 +68,12 @@ export default function Programs() {
             >
               {/* Image Preview */}
               <div className="relative h-48 overflow-hidden">
-                <img
+                <Image
                   src={item.imageUrl}
                   alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
                 <span className="absolute top-3 right-3 px-2.5 py-1 rounded-md text-[11px] font-black bg-[#ba2d1d]/85 backdrop-blur-md text-white border border-[#ba2d1d]/50">

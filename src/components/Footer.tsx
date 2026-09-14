@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { GYM_INFO } from '@/lib/data';
 import { Phone, MapPin, Heart, Shield, ArrowUpRight } from 'lucide-react';
 import { InstagramIcon } from '@/components/Icons';
@@ -15,7 +16,13 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center space-x-3.5">
               <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-[#ba2d1d] shadow-md shadow-[#ba2d1d]/40 shrink-0">
-                <img src="/logo.png" alt="11th Universe MMA" className="w-full h-full object-cover" />
+                <Image
+                  src="/logo.png"
+                  alt="11th Universe MMA"
+                  width={44}
+                  height={44}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div>
                 <span className="text-lg font-black tracking-wider text-white uppercase block">

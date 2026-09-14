@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Calendar, Menu, X, UserCheck } from 'lucide-react';
 
 export default function Navbar() {
@@ -13,10 +14,13 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-20">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center space-x-3.5 group">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#ba2d1d] group-hover:scale-105 transition-all duration-300">
-              <img
+            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#ba2d1d] group-hover:scale-105 transition-all duration-300 shrink-0">
+              <Image
                 src="/logo.png"
                 alt="11th Universe MMA - 11 Fight Camp Logo"
+                width={48}
+                height={48}
+                priority
                 className="w-full h-full object-cover"
               />
             </div>
