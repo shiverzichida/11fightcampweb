@@ -1,11 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Flame, Calendar, ArrowRight, MapPin, MessageSquare } from 'lucide-react';
 import { GYM_INFO } from '@/lib/data';
 
 export default function Hero() {
+  const [activeStatIndex, setActiveStatIndex] = useState(1);
+
+  // Automatically cycle burning light from one card to the next every 2.4 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveStatIndex((prev) => (prev + 1) % 4);
+    }, 2400);
+    return () => clearInterval(timer);
+  }, []);
+
+  const stats = [
+    { value: '5+', label: 'Disiplin Bela Diri', activeColor: 'text-[#d63725]' },
+    { value: '15+', label: 'Sesi Kelas Mingguan', activeColor: 'text-[#d63725]' },
+    { value: '100%', label: 'Pemula Friendly', activeColor: 'text-[#ea580c]' },
+    { value: 'Cage & Ring', label: 'Fasilitas Lengkap', activeColor: 'text-amber-400' },
+  ];
+
   const whatsappBookingUrl = `https://wa.me/${GYM_INFO.phone.replace('+', '')}?text=${encodeURIComponent(
     'Halo 11 Fight Camp Pontianak! Saya ingin tanya jadwal kelas dan mencoba trial latihan.'
   )}`;
@@ -88,37 +105,40 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* 4. Bottom Floating Stats Bar (Responsive Mobile Grid) */}
+      {/* 4. Bottom Floating Stats Bar (Light moves sequentially from card to card) */}
       <div className="relative z-10 w-full bg-gradient-to-t from-[#08090b] via-[#08090b]/85 to-transparent pt-3 pb-6 sm:pb-8">
         <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3.5">
-            <div className="p-3 sm:p-4 rounded-2xl bg-black/70 backdrop-blur-md border border-zinc-800 text-center hover:border-[#ba2d1d] card-fire-hover transition-all">
-              <div className="text-xl sm:text-3xl font-black text-white">5+</div>
-              <div className="text-[10px] sm:text-xs text-zinc-400 font-semibold uppercase tracking-wider mt-0.5">
-                Disiplin Bela Diri
-              </div>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5">
+            {stats.map((stat, i) => {
+              const isActive = activeStatIndex === i;
 
-            <div className="p-3 sm:p-4 rounded-2xl bg-black/80 backdrop-blur-md card-fire text-center transition-all">
-              <div className="text-xl sm:text-3xl font-black text-[#d63725]">15+</div>
-              <div className="text-[10px] sm:text-xs text-zinc-200 font-bold uppercase tracking-wider mt-0.5">
-                Sesi Kelas Mingguan
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 rounded-2xl bg-black/70 backdrop-blur-md border border-zinc-800 text-center hover:border-[#ba2d1d] card-fire-hover transition-all">
-              <div className="text-xl sm:text-3xl font-black text-[#ea580c]">100%</div>
-              <div className="text-[10px] sm:text-xs text-zinc-400 font-semibold uppercase tracking-wider mt-0.5">
-                Pemula Friendly
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 rounded-2xl bg-black/70 backdrop-blur-md border border-zinc-800 text-center hover:border-[#ba2d1d] card-fire-hover transition-all">
-              <div className="text-xl sm:text-3xl font-black text-zinc-100">Cage & Ring</div>
-              <div className="text-[10px] sm:text-xs text-zinc-400 font-semibold uppercase tracking-wider mt-0.5">
-                Fasilitas Lengkap
-              </div>
-            </div>
+              return (
+                <div
+                  key={i}
+                  onMouseEnter={() => setActiveStatIndex(i)}
+                  className={`p-3 sm:p-4 rounded-2xl text-center cursor-pointer transition-all duration-500 select-none ${
+                    isActive
+                      ? 'bg-black/90 backdrop-blur-md card-fire scale-[1.03] shadow-2xl z-20'
+                      : 'bg-black/60 backdrop-blur-md border border-zinc-800/80 hover:border-zinc-700 card-fire-hover opacity-85'
+                  }`}
+                >
+                  <div
+                    className={`text-xl sm:text-3xl font-black transition-colors duration-300 ${
+                      isActive ? stat.activeColor : 'text-white'
+                    }`}
+                  >
+                    {stat.value}
+                  </div>
+                  <div
+                    className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider mt-0.5 transition-colors duration-300 ${
+                      isActive ? 'text-zinc-100' : 'text-zinc-400'
+                    }`}
+                  >
+                    {stat.label}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
