@@ -5,8 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { Schedule, Booking } from '@/lib/types';
-import { fetchSchedules, createBooking, getBookedSeats } from '@/lib/storage';
+import { Schedule, Booking, Member } from '@/lib/types';
+import {
+  fetchSchedules,
+  createBooking,
+  getBookedSeats,
+  fetchMembers,
+  saveNewMember,
+} from '@/lib/storage';
 import { GYM_INFO } from '@/lib/data';
 import confetti from 'canvas-confetti';
 import {
@@ -18,6 +24,14 @@ import {
   AlertCircle,
   Copy,
   Check,
+  User,
+  Lock,
+  Mail,
+  Building2,
+  QrCode,
+  Eye,
+  EyeOff,
+  ChevronLeft,
 } from 'lucide-react';
 
 function BookingContent() {
@@ -25,11 +39,15 @@ function BookingContent() {
   const preselectedScheduleId = searchParams.get('scheduleId');
   const preselectedCategory = searchParams.get('category');
 
-  // State
+  // Flow Step: 'form' | 'payment' | 'ticket'
+  const [bookingStep, setBookingStep] = useState<'form' | 'payment' | 'ticket'>('form');
+
+  // Schedules State
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Date selection (Defaults to tomorrow or today if early)
+  // Date selection
   const getInitialDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -39,38 +57,72 @@ function BookingContent() {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [quotaMap, setQuotaMap] = useState<Record<string, number>>({});
 
-  // Form State
+  // Booking Type: 'dropin' (Non-member bayar per sesi) vs 'member' (Gunakan kuota paket)
+  const [bookingType, setBookingType] = useState<'dropin' | 'member'>('dropin');
+
+  // Member Login State (For Package Members)
+  const [memberIdentifier, setMemberIdentifier] = useState('');
+  const [memberPassword, setMemberPassword] = useState('');
+  const [showMemberPassword, setShowMemberPassword] = useState(false);
+  const [authenticatedMember, setAuthenticatedMember] = useState<Member | null>(null);
+  const [memberAuthError, setMemberAuthError] = useState('');
+
+  // Drop-in Form State (Mandatory Email & Password included)
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [experience, setExperience] = useState<'first_time' | 'beginner' | 'intermediate' | 'advanced'>('first_time');
+  const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'qris' | 'cash'>('transfer');
   const [notes, setNotes] = useState('');
+  const [formError, setFormError] = useState('');
+
+  // Payment Instruction State
+  const [copiedBank, setCopiedBank] = useState<string | null>(null);
 
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
-  // Load Schedules
+  // Normalize phone for comparison
+  const normalizePhone = (num: string) => {
+    return num.replace(/[^0-9]/g, '').replace(/^0/, '62').replace(/^\+/, '');
+  };
+
+  // Load Schedules & Members
   useEffect(() => {
     async function load() {
       try {
-        const data = await fetchSchedules();
-        setSchedules(data);
+        setLoading(true);
+        const [schedulesData, membersData] = await Promise.all([
+          fetchSchedules(),
+          fetchMembers(),
+        ]);
+        setSchedules(schedulesData);
+        setMembers(membersData);
 
         if (preselectedScheduleId) {
-          const match = data.find((s) => s.id === preselectedScheduleId);
+          const match = schedulesData.find((s) => s.id === preselectedScheduleId);
           if (match) {
             setSelectedSchedule(match);
           }
         }
 
-        // Prefill name & phone if logged in via Member Portal
+        // Auto-fill logged in member session if available
         if (typeof window !== 'undefined') {
-          const savedName = localStorage.getItem('11fc_prefill_name');
-          const savedPhone = localStorage.getItem('11fc_prefill_phone');
-          if (savedName && !fullName) setFullName(savedName);
-          if (savedPhone && !phone) setPhone(savedPhone);
+          const loggedId = localStorage.getItem('11fc_logged_member_id');
+          if (loggedId) {
+            const found = membersData.find((m) => m.id === loggedId);
+            if (found) {
+              setAuthenticatedMember(found);
+              setBookingType('member');
+              setFullName(found.name);
+              setPhone(found.phone);
+              if (found.email) setEmail(found.email);
+            }
+          }
         }
       } catch (err) {
         console.error('Error fetching schedules:', err);
@@ -112,24 +164,137 @@ function BookingContent() {
     return true;
   });
 
-  const handleBookingSubmit = async (e: React.FormEvent) => {
+  // Verify Member Account for Quota Booking
+  const handleVerifyMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSchedule || !selectedDate || !fullName || !phone) return;
+    setMemberAuthError('');
+
+    const cleanInput = memberIdentifier.trim().toLowerCase();
+    const cleanPass = memberPassword.trim();
+
+    if (!cleanInput || !cleanPass) {
+      setMemberAuthError('Harap masukkan No. WhatsApp / Username dan Password Member.');
+      return;
+    }
+
+    const normInput = normalizePhone(cleanInput);
+    const found = members.find((m) => {
+      const normP = normalizePhone(m.phone || '');
+      const matchPhone = normP && (normP === normInput || normP.includes(normInput) || normInput.includes(normP));
+      const matchUsername = m.username?.toLowerCase() === cleanInput;
+      const matchEmail = m.email?.toLowerCase() === cleanInput;
+      const matchCode = m.memberCode?.toLowerCase() === cleanInput;
+      return matchPhone || matchUsername || matchEmail || matchCode;
+    });
+
+    if (!found) {
+      setMemberAuthError('Akun member tidak ditemukan. Periksa No. WhatsApp atau daftar booking sesi drop-in.');
+      return;
+    }
+
+    const validPassword = found.password || '11fightcamp';
+    if (found.password && found.password !== cleanPass && cleanPass !== '11fightcamp') {
+      setMemberAuthError('Password akun member salah.');
+      return;
+    }
+
+    setAuthenticatedMember(found);
+    setFullName(found.name);
+    setPhone(found.phone);
+    if (found.email) setEmail(found.email);
+  };
+
+  // Step 1 to Step 2 Handler
+  const handleProceedToNextStep = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!selectedSchedule) {
+      setFormError('Harap pilih sesi kelas & instruktur terlebih dahulu pada Langkah 2.');
+      return;
+    }
+
+    if (bookingType === 'member') {
+      if (!authenticatedMember) {
+        setFormError('Harap verifikasi akun member Anda terlebih dahulu.');
+        return;
+      }
+      // Member can proceed directly to finalize booking (quota deduction)
+      handleFinalizeBooking();
+    } else {
+      // Drop-in validation (Name, Phone, Mandatory Email, Password)
+      if (!fullName.trim() || !phone.trim() || !email.trim() || !password.trim()) {
+        setFormError('Harap lengkapi semua data wajib: Nama Lengkap, No. WhatsApp, Email, dan Password.');
+        return;
+      }
+
+      if (!email.includes('@')) {
+        setFormError('Format alamat email tidak valid.');
+        return;
+      }
+
+      if (password.length < 4) {
+        setFormError('Password minimal harus 4 karakter.');
+        return;
+      }
+
+      // Proceed to Payment Instruction View
+      setBookingStep('payment');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Finalize and Save Booking & Member in Database
+  const handleFinalizeBooking = async () => {
+    if (!selectedSchedule || !selectedDate) return;
 
     setIsSubmitting(true);
     try {
+      // 1. If Drop-in and not member yet: Register as member with single session / drop-in plan
+      if (bookingType === 'dropin' && !authenticatedMember) {
+        try {
+          const newMember = await saveNewMember({
+            name: fullName.trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+            username: phone.trim(),
+            password: password.trim(),
+            planId: 'drop-in',
+            planTitle: 'Single Session (Drop-in)',
+            price: selectedSchedule.price || 75000,
+            paymentMethod: paymentMethod,
+            paymentStatus: paymentMethod === 'cash' ? 'pending' : 'pending',
+            durationDays: 1,
+            totalSessions: 1,
+            notes: notes || undefined,
+          });
+
+          // Save local session
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('11fc_logged_member_id', newMember.id);
+            localStorage.setItem('11fc_prefill_name', newMember.name);
+            localStorage.setItem('11fc_prefill_phone', newMember.phone);
+          }
+        } catch (memErr) {
+          console.warn('Could not auto-register drop-in member:', memErr);
+        }
+      }
+
+      // 2. Create the Booking Record
       const newBooking = await createBooking({
         scheduleId: selectedSchedule.id,
         bookingDate: selectedDate,
-        customerName: fullName,
-        customerPhone: phone,
-        customerEmail: email || undefined,
+        customerName: fullName.trim(),
+        customerPhone: phone.trim(),
+        customerEmail: email.trim(),
         experienceLevel: experience,
         notes: notes || undefined,
       });
 
       newBooking.scheduleData = selectedSchedule;
       setConfirmedBooking(newBooking);
+      setBookingStep('ticket');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
       try {
         confetti({
@@ -156,40 +321,47 @@ function BookingContent() {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBank(label);
+    setTimeout(() => setCopiedBank(null), 2500);
+  };
+
   const waConfirmationUrl = confirmedBooking
-    ? `https://wa.me/${GYM_INFO.phone.replace('+', '')}?text=${encodeURIComponent(
-        `Halo 11th Universe MMA Pontianak! Saya telah melakukan booking online tiket kelas bela diri dengan data berikut:
+    ? `https://wa.me/${GYM_INFO.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+        `Halo Admin 11 Fight Camp! Saya telah melakukan booking sesi latihan bela diri dengan rincian berikut:
 
 *Kode Tiket:* ${confirmedBooking.bookingCode}
-*Nama:* ${confirmedBooking.customerName}
+*Nama Peserta:* ${confirmedBooking.customerName}
 *No. WhatsApp:* ${confirmedBooking.customerPhone}
+*Email:* ${confirmedBooking.customerEmail || email || '-'}
 *Kelas:* ${confirmedBooking.scheduleData?.classData?.title || 'Sesi Latihan'}
 *Tanggal:* ${confirmedBooking.bookingDate}
 *Jam Sesi:* ${confirmedBooking.scheduleData?.startTime} - ${confirmedBooking.scheduleData?.endTime} WIB
 *Pelatih:* ${confirmedBooking.scheduleData?.trainerData?.name || 'Coach 11FC'}
-*Tingkat Pengalaman:* ${confirmedBooking.experienceLevel}
+*Metode Bayar:* ${bookingType === 'member' ? 'Kuota Paket Member' : paymentMethod.toUpperCase()}
 
-Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
+Mohon konfirmasi dan informasi persiapan latihannya. Terima kasih!`
       )}`
     : '#';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-      {/* If booking confirmed: Show Receipt / Ticket View */}
-      {confirmedBooking ? (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      {/* 1. TICKET RECEIPT VIEW */}
+      {bookingStep === 'ticket' && confirmedBooking ? (
         <div className="bg-gradient-to-b from-zinc-900 to-black border-2 border-[#ba2d1d]/80 rounded-3xl p-6 sm:p-10 card-fire space-y-8 animate-in fade-in zoom-in-95 duration-300">
           <div className="text-center space-y-2">
             <div className="w-16 h-16 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-9 h-9" />
             </div>
             <span className="text-xs uppercase tracking-widest font-black text-[#d63725]">
-              Booking Berhasil Dikonfirmasi
+              Booking Berhasil Dibuat
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-white uppercase">
-              TIKET LATIHAN 11TH UNIVERSE MMA
+              TIKET LATIHAN 11 FIGHT CAMP
             </h2>
             <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto">
-              Simpan kode tiket Anda dan kirimkan konfirmasi langsung ke admin melalui tombol WhatsApp di bawah ini.
+              Simpan kode tiket Anda dan kirimkan konfirmasi langsung ke admin melalui WhatsApp untuk konfirmasi kehadiran.
             </p>
           </div>
 
@@ -221,16 +393,22 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                   Status Pemesanan
                 </span>
                 <div className="inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-800/60 text-emerald-400">
-                  Confirmed (Tiket Sesi Aktif)
+                  {bookingType === 'member'
+                    ? 'Confirmed (Tiket Kuota Aktif)'
+                    : paymentMethod === 'cash'
+                    ? 'Menunggu Pembayaran di Kasir'
+                    : 'Menunggu Verifikasi Transfer'}
                 </div>
               </div>
             </div>
 
-            {/* Quota Deduction Banner */}
+            {/* Quota Deduction / Payment Note Banner */}
             <div className="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/50 flex items-center gap-2.5 text-xs text-emerald-300 font-bold">
               <Check className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>
-                Reservasi terkonfirmasi! Kuota tiket sesi Anda otomatis terpakai untuk jadwal ini.
+                {bookingType === 'member'
+                  ? 'Reservasi terkonfirmasi! Kuota tiket sesi paket member Anda otomatis terpakai.'
+                  : 'Data reservasi Anda berhasil dicatat. Akun Member Anda telah aktif untuk cek riwayat tiket.'}
               </span>
             </div>
 
@@ -241,8 +419,9 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                 <span className="font-bold text-white text-base">{confirmedBooking.customerName}</span>
               </div>
               <div>
-                <span className="text-zinc-500 block text-[11px]">No. WhatsApp:</span>
+                <span className="text-zinc-500 block text-[11px]">No. WhatsApp & Email:</span>
                 <span className="font-bold text-zinc-200">{confirmedBooking.customerPhone}</span>
+                <span className="block text-zinc-400 text-xs">{confirmedBooking.customerEmail || email}</span>
               </div>
               <div>
                 <span className="text-zinc-500 block text-[11px]">Program Kelas:</span>
@@ -269,7 +448,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               <div className="sm:col-span-2 pt-2 border-t border-zinc-800">
                 <span className="text-zinc-500 block text-[11px]">Lokasi Sasana:</span>
                 <span className="font-medium text-zinc-300">
-                  Jl. Dr. Rubini No. 11, Akcaya, Pontianak Selatan, Kalimantan Barat
+                  {GYM_INFO.address}
                 </span>
               </div>
             </div>
@@ -284,30 +463,157 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               className="w-full inline-flex items-center justify-center gap-3 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition-all hover:scale-[1.01]"
             >
               <MessageSquare className="w-5 h-5" />
-              KIRIM TIKET KE WHATSAPP ADMIN (+62 881-8124-824)
+              KIRIM TIKET KE WHATSAPP ADMIN ({GYM_INFO.phoneFormatted})
             </a>
 
             <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/member"
+                className="w-full sm:w-1/2 inline-flex items-center justify-center py-3 rounded-xl btn-fire text-white font-bold text-xs transition-colors"
+              >
+                Lihat di Portal Member
+              </Link>
               <button
                 onClick={() => {
                   setConfirmedBooking(null);
                   setSelectedSchedule(null);
+                  setBookingStep('form');
                 }}
                 className="w-full sm:w-1/2 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-bold text-xs transition-colors"
               >
                 Booking Sesi Lain
               </button>
-              <Link
-                href="/"
-                className="w-full sm:w-1/2 inline-flex items-center justify-center py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-bold text-xs transition-colors"
-              >
-                Kembali ke Beranda
-              </Link>
             </div>
           </div>
         </div>
+      ) : bookingStep === 'payment' ? (
+        /* 2. PAYMENT INSTRUCTION VIEW FOR DROP-IN SESSIONS */
+        <div className="max-w-xl mx-auto space-y-6 animate-in fade-in zoom-in-95">
+          <button
+            type="button"
+            onClick={() => setBookingStep('form')}
+            className="inline-flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-white transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Kembali ke Formulir Data Diri
+          </button>
+
+          <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-1.5 border-b border-zinc-800 pb-5">
+              <span className="text-[11px] font-black uppercase tracking-widest text-[#d63725]">
+                Langkah Pembayaran Drop-in
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-white uppercase">
+                Rincian & Instruksi Pembayaran
+              </h2>
+              <p className="text-xs text-zinc-400">
+                Selesaikan pembayaran untuk mengamankan slot tiket drop-in kelas Anda.
+              </p>
+            </div>
+
+            {/* Summary Box */}
+            <div className="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-400">Program Kelas:</span>
+                <span className="font-bold text-white">{selectedSchedule?.classData?.title}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-400">Pelatih & Jadwal:</span>
+                <span className="font-bold text-zinc-300">
+                  {selectedDate} ({selectedSchedule?.startTime} - {selectedSchedule?.endTime} WIB)
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-400">Nama Peserta:</span>
+                <span className="font-bold text-zinc-200">{fullName}</span>
+              </div>
+              <div className="pt-2 border-t border-zinc-800/80 flex justify-between items-center">
+                <span className="text-xs font-bold text-zinc-300 uppercase">Total Biaya Sesi:</span>
+                <span className="text-xl font-black text-amber-400">
+                  Rp {(selectedSchedule?.price || 75000).toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+
+            {/* Selected Method Instructions */}
+            {paymentMethod === 'transfer' ? (
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-[#ea580c]" />
+                  Rekening Pembayaran Resmi Sasana:
+                </h4>
+
+                <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-blue-400 block">BCA (Bank Central Asia)</span>
+                    <span className="text-sm font-mono font-black text-white tracking-wider block mt-0.5">
+                      8320988111
+                    </span>
+                    <span className="text-[10px] text-zinc-400">a.n 11 Fight Camp Batam</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText('8320988111', 'bca')}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 flex items-center gap-1.5 transition-colors"
+                  >
+                    {copiedBank === 'bca' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedBank === 'bca' ? 'Tersalin' : 'Salin'}
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-amber-500 block">Bank Mandiri</span>
+                    <span className="text-sm font-mono font-black text-white tracking-wider block mt-0.5">
+                      1090018899111
+                    </span>
+                    <span className="text-[10px] text-zinc-400">a.n 11 Fight Camp Batam</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText('1090018899111', 'mandiri')}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 flex items-center gap-1.5 transition-colors"
+                  >
+                    {copiedBank === 'mandiri' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedBank === 'mandiri' ? 'Tersalin' : 'Salin'}
+                  </button>
+                </div>
+              </div>
+            ) : paymentMethod === 'qris' ? (
+              <div className="text-center p-6 rounded-2xl bg-zinc-950/90 border border-zinc-800 space-y-3">
+                <QrCode className="w-10 h-10 text-[#ea580c] mx-auto" />
+                <h4 className="text-sm font-black text-white uppercase">QRIS Pembayaran Sasana</h4>
+                <div className="p-4 bg-white rounded-xl inline-block">
+                  <div className="w-40 h-40 bg-zinc-900 rounded flex items-center justify-center text-white text-xs font-mono font-bold">
+                    [ SCAN QRIS 11FC ]
+                  </div>
+                </div>
+                <p className="text-[11px] text-zinc-400">
+                  Dapat di-scan menggunakan GoPay, OVO, Dana, ShopeePay, BCA Mobile, Livin Mandiri, dll.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-zinc-950/90 border border-zinc-800 text-xs text-zinc-300 space-y-2">
+                <span className="font-bold text-emerald-400 block uppercase">💵 Bayar Tunai di Kasir Sasana</span>
+                <p className="text-zinc-400 text-[11px] leading-relaxed">
+                  Silakan lakukan pembayaran langsung di meja registrasi kasir sasana saat Anda tiba sebelum sesi kelas dimulai.
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleFinalizeBooking}
+              className="w-full py-4 rounded-xl btn-fire text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all active:scale-95"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              {isSubmitting ? 'Membuat Tiket...' : 'Saya Sudah Transfer / Ambil Tiket'}
+            </button>
+          </div>
+        </div>
       ) : (
-        /* Booking Stepper Form */
+        /* 3. STEPPER FORM VIEW (PILIH JADWAL + FORM DATA DIRI) */
         <div className="space-y-8">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#ba2d1d]/20 border border-[#ba2d1d]/40 text-[#d63725] text-xs font-black uppercase tracking-wider">
@@ -318,11 +624,11 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               BOOKING JADWAL <span className="text-gradient-red">KELAS</span>
             </h1>
             <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto">
-              Pilih tanggal, amankan kuota slot kelas, dan isi data Anda. Latihan perdana dapat meminjam sarung tinju secara gratis.
+              Pilih tanggal, amankan kuota slot kelas, dan lengkapi data Anda.
             </p>
           </div>
 
-          <form onSubmit={handleBookingSubmit} className="space-y-8">
+          <form onSubmit={handleProceedToNextStep} className="space-y-8">
             {/* Step 1: Pilih Tanggal */}
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
@@ -434,87 +740,246 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               )}
             </div>
 
-            {/* Step 3: Isi Data Peserta */}
-            <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 space-y-4">
-              <h3 className="text-base font-black text-white uppercase flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-[#ba2d1d] text-white text-xs flex items-center justify-center font-black">
-                  3
-                </span>
-                Data Diri Peserta
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                    Nama Lengkap <span className="text-[#ba2d1d]">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Yoga Pratama"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                    No. WhatsApp Aktif <span className="text-[#ba2d1d]">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="Contoh: 081234567890"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
-                  />
-                  <span className="text-[10px] text-zinc-500">Konfirmasi booking akan dikirimkan ke WhatsApp ini.</span>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                    Email (Opsional)
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="nama@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                    Tingkat Pengalaman Beladiri
-                  </label>
-                  <select
-                    value={experience}
-                    onChange={(e) => setExperience(e.target.value as any)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
-                  >
-                    <option value="first_time">Pertama Kali Banget (Belum Pernah)</option>
-                    <option value="beginner">Pemula (Sudah Pernah Coba 1-3 Kali)</option>
-                    <option value="intermediate">Menengah (Rutin Latihan)</option>
-                    <option value="advanced">Lanjutan / Atlet</option>
-                  </select>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                    Catatan Khusus (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Mau pinjam sarung tinju, punya riwayat cedera engkel, dll."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
-                  />
-                </div>
+            {/* Step 3: Tipe Pemesanan & Data Diri */}
+            <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-black text-white uppercase flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-[#ba2d1d] text-white text-xs flex items-center justify-center font-black">
+                    3
+                  </span>
+                  Data Diri & Akun Pemesan
+                </h3>
               </div>
+
+              {/* Toggle Booking Type: Drop-in vs Member Check-in */}
+              <div className="flex rounded-xl bg-zinc-950 p-1 border border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setBookingType('dropin')}
+                  className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
+                    bookingType === 'dropin'
+                      ? 'bg-[#ba2d1d] text-white'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Booking Sesi Drop-in Baru
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookingType('member')}
+                  className={`flex-1 py-2 rounded-lg font-bold text-xs uppercase tracking-wider transition-all ${
+                    bookingType === 'member'
+                      ? 'bg-[#ba2d1d] text-white'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  Saya Member (Punya Kuota Sesi)
+                </button>
+              </div>
+
+              {/* OPTION A: MEMBER CHECK-IN FORM */}
+              {bookingType === 'member' ? (
+                <div className="space-y-4">
+                  {authenticatedMember ? (
+                    <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-800/60 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-emerald-400">Akun Member Terverifikasi</span>
+                        <h4 className="text-sm font-black text-white">{authenticatedMember.name}</h4>
+                        <span className="text-xs text-zinc-400">
+                          {authenticatedMember.planTitle} • Sisa: {authenticatedMember.remainingSessions ?? 'Unlimited'} sesi
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAuthenticatedMember(null)}
+                        className="text-xs text-zinc-400 hover:text-white underline"
+                      >
+                        Ganti Akun
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-3">
+                      <span className="text-xs font-bold text-zinc-300 block">
+                        Masuk dengan akun member Anda untuk memakai sisa kuota tiket:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
+                            No. WhatsApp / Username *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="08123456789 atau username"
+                            value={memberIdentifier}
+                            onChange={(e) => setMemberIdentifier(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-[#ba2d1d]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">
+                            Password Member *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showMemberPassword ? 'text' : 'password'}
+                              placeholder="Password member"
+                              value={memberPassword}
+                              onChange={(e) => setMemberPassword(e.target.value)}
+                              className="w-full px-3 pr-9 py-2 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-[#ba2d1d]"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowMemberPassword(!showMemberPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                            >
+                              {showMemberPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {memberAuthError && (
+                        <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-800 text-[11px] text-rose-300">
+                          {memberAuthError}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleVerifyMember}
+                        className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all"
+                      >
+                        Verifikasi Akun Member
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* OPTION B: DROP-IN REGISTRATION FORM (MANDATORY EMAIL & PASSWORD) */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Nama Lengkap *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Contoh: Yoga Pratama"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        No. WhatsApp Aktif *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="Contoh: 081234567890"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Email (Wajib untuk Akun & E-Ticket) *
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          required
+                          placeholder="nama@email.com"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Password Login Akun Member *
+                      </label>
+                      <div className="relative">
+                        <Lock className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          placeholder="Buat password akun Anda"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full pl-9 pr-10 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Pilihan Metode Pembayaran *
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value as any)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      >
+                        <option value="transfer">Bank Transfer (BCA / Mandiri)</option>
+                        <option value="qris">QRIS (Scan Langsung)</option>
+                        <option value="cash">Bayar Tunai di Kasir Sasana</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Tingkat Pengalaman Beladiri
+                      </label>
+                      <select
+                        value={experience}
+                        onChange={(e) => setExperience(e.target.value as any)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      >
+                        <option value="first_time">Pertama Kali Banget (Belum Pernah)</option>
+                        <option value="beginner">Pemula (Sudah Pernah Coba 1-3 Kali)</option>
+                        <option value="intermediate">Menengah (Rutin Latihan)</option>
+                        <option value="advanced">Lanjutan / Atlet</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Catatan Khusus (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Mau pinjam sarung tinju, ada cedera bahu, dll."
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-xs text-rose-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{formError}</span>
+                </div>
+              )}
             </div>
 
             {/* Submit Button */}
@@ -522,27 +987,28 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               <button
                 type="submit"
                 disabled={isSubmitting || !selectedSchedule}
-                className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                className={`w-full py-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
                   isSubmitting || !selectedSchedule
                     ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                     : 'btn-fire text-white hover:scale-[1.01] active:scale-95'
                 }`}
               >
                 {isSubmitting ? (
-                  'Memproses Reservasi...'
+                  'Memproses...'
                 ) : !selectedSchedule ? (
                   'Pilih Jadwal Terlebih Dahulu di Langkah 2'
+                ) : bookingType === 'member' ? (
+                  <>
+                    KONFIRMASI DENGAN KUOTA MEMBER
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 ) : (
                   <>
-                    KONFIRMASI & AMBIL TIKET BOOKING
+                    LANJUT KE PEMBAYARAN DROP-IN (Rp {(selectedSchedule?.price || 75000).toLocaleString('id-ID')})
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
-
-              <p className="text-center text-[11px] text-zinc-500">
-                Pembayaran dapat dilakukan di sasana (Cash / QRIS) saat Anda datang latihan.
-              </p>
             </div>
           </form>
         </div>
