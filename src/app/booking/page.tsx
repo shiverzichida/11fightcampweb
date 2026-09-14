@@ -221,9 +221,17 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                   Status Pemesanan
                 </span>
                 <div className="inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/80 border border-emerald-800/60 text-emerald-400">
-                  Confirmed (Menunggu Kehadiran)
+                  Confirmed (Tiket Sesi Aktif)
                 </div>
               </div>
+            </div>
+
+            {/* Quota Deduction Banner */}
+            <div className="mt-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/50 flex items-center gap-2.5 text-xs text-emerald-300 font-bold">
+              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>
+                Reservasi terkonfirmasi! Kuota tiket sesi Anda otomatis terpakai untuk jadwal ini.
+              </span>
             </div>
 
             {/* Details Grid */}

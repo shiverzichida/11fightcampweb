@@ -273,6 +273,8 @@ export async function createBooking(
         .select()
         .single();
       if (!error && data) {
+        // Auto-deduct 1 session if customer is an active member with session quota
+        await autoDeductMemberSessionForBooking(newBooking.customerPhone, newBooking.customerName);
         return newBooking;
       }
     } catch (err) {
@@ -283,17 +285,53 @@ export async function createBooking(
   const current = getLocalItem<Booking[]>(STORAGE_KEYS.BOOKINGS, []);
   const updated = [newBooking, ...current];
   setLocalItem(STORAGE_KEYS.BOOKINGS, updated);
+
+  // Auto-deduct for local storage as well
+  await autoDeductMemberSessionForBooking(newBooking.customerPhone, newBooking.customerName);
+
   return newBooking;
+}
+
+// Helper to auto-deduct session when booking is confirmed
+async function autoDeductMemberSessionForBooking(phone?: string, name?: string): Promise<boolean> {
+  try {
+    const normPhone = phone ? phone.replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+    const normName = name ? name.toLowerCase().trim() : '';
+
+    const members = await fetchMembers();
+    const matchingMember = members.find((m) => {
+      const normMPhone = m.phone ? m.phone.replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+      const matchP = normMPhone && normPhone && (normMPhone === normPhone || normMPhone.includes(normPhone) || normPhone.includes(normMPhone));
+      const matchN = normName && m.name && m.name.toLowerCase().trim() === normName;
+      return (matchP || matchN) && m.status === 'active' && typeof m.remainingSessions === 'number';
+    });
+
+    if (matchingMember && matchingMember.remainingSessions && matchingMember.remainingSessions > 0) {
+      return await decrementMemberSession(matchingMember.id);
+    }
+  } catch (err) {
+    console.warn('Auto deduct member session error:', err);
+  }
+  return false;
 }
 
 export async function updateBookingStatus(
   id: string,
   status: 'confirmed' | 'attended' | 'cancelled'
 ): Promise<boolean> {
+  const allBookings = await fetchBookings();
+  const currentBooking = allBookings.find((b) => b.id === id);
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { error } = await supabase.from('bookings').update({ status }).eq('id', id);
-      if (!error) return true;
+      if (!error) {
+        // If booking was cancelled and was previously confirmed/attended, refund session
+        if (status === 'cancelled' && currentBooking && currentBooking.status !== 'cancelled') {
+          await refundMemberSessionForBooking(currentBooking.customerPhone, currentBooking.customerName);
+        }
+        return true;
+      }
     } catch (err) {
       console.warn('Supabase update booking status error:', err);
     }
@@ -302,7 +340,35 @@ export async function updateBookingStatus(
   const current = getLocalItem<Booking[]>(STORAGE_KEYS.BOOKINGS, []);
   const updated = current.map((b) => (b.id === id ? { ...b, status } : b));
   setLocalItem(STORAGE_KEYS.BOOKINGS, updated);
+
+  if (status === 'cancelled' && currentBooking && currentBooking.status !== 'cancelled') {
+    await refundMemberSessionForBooking(currentBooking.customerPhone, currentBooking.customerName);
+  }
+
   return true;
+}
+
+// Helper to refund session when booking is cancelled
+async function refundMemberSessionForBooking(phone?: string, name?: string): Promise<boolean> {
+  try {
+    const normPhone = phone ? phone.replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+    const normName = name ? name.toLowerCase().trim() : '';
+
+    const members = await fetchMembers();
+    const matchingMember = members.find((m) => {
+      const normMPhone = m.phone ? m.phone.replace(/[^0-9]/g, '').replace(/^0/, '62') : '';
+      const matchP = normMPhone && normPhone && (normMPhone === normPhone || normMPhone.includes(normPhone) || normPhone.includes(normMPhone));
+      const matchN = normName && m.name && m.name.toLowerCase().trim() === normName;
+      return (matchP || matchN) && typeof m.remainingSessions === 'number';
+    });
+
+    if (matchingMember) {
+      return await incrementMemberSession(matchingMember.id);
+    }
+  } catch (err) {
+    console.warn('Refund member session error:', err);
+  }
+  return false;
 }
 
 export async function getBookedSeats(scheduleId: string, bookingDate: string): Promise<number> {
@@ -508,8 +574,44 @@ export async function updateMemberStatus(
 }
 
 export async function decrementMemberSession(id: string): Promise<boolean> {
+  let member: Member | undefined;
   const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
-  const member = current.find((m) => m.id === id);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('members').select('*').eq('id', id).single();
+      if (!error && data) {
+        member = {
+          id: data.id,
+          memberCode: data.member_code,
+          name: data.name,
+          phone: data.phone,
+          username: data.username || undefined,
+          password: data.password || undefined,
+          email: data.email || undefined,
+          planId: data.plan_id,
+          planTitle: data.plan_title,
+          price: data.price,
+          paymentMethod: data.payment_method,
+          paymentStatus: data.payment_status,
+          status: data.status,
+          startDate: data.start_date,
+          endDate: data.end_date,
+          remainingSessions: data.remaining_sessions ?? undefined,
+          totalSessions: data.total_sessions ?? undefined,
+          notes: data.notes || undefined,
+          createdAt: data.created_at,
+        };
+      }
+    } catch (err) {
+      console.warn('Supabase fetch member in decrement error:', err);
+    }
+  }
+
+  if (!member) {
+    member = current.find((m) => m.id === id);
+  }
+
   if (!member || typeof member.remainingSessions !== 'number' || member.remainingSessions <= 0) {
     return false;
   }
@@ -539,8 +641,44 @@ export async function decrementMemberSession(id: string): Promise<boolean> {
 }
 
 export async function incrementMemberSession(id: string): Promise<boolean> {
+  let member: Member | undefined;
   const current = getLocalItem<Member[]>(STORAGE_KEYS.MEMBERS, []);
-  const member = current.find((m) => m.id === id);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('members').select('*').eq('id', id).single();
+      if (!error && data) {
+        member = {
+          id: data.id,
+          memberCode: data.member_code,
+          name: data.name,
+          phone: data.phone,
+          username: data.username || undefined,
+          password: data.password || undefined,
+          email: data.email || undefined,
+          planId: data.plan_id,
+          planTitle: data.plan_title,
+          price: data.price,
+          paymentMethod: data.payment_method,
+          paymentStatus: data.payment_status,
+          status: data.status,
+          startDate: data.start_date,
+          endDate: data.end_date,
+          remainingSessions: data.remaining_sessions ?? undefined,
+          totalSessions: data.total_sessions ?? undefined,
+          notes: data.notes || undefined,
+          createdAt: data.created_at,
+        };
+      }
+    } catch (err) {
+      console.warn('Supabase fetch member in increment error:', err);
+    }
+  }
+
+  if (!member) {
+    member = current.find((m) => m.id === id);
+  }
+
   if (!member || typeof member.remainingSessions !== 'number') {
     return false;
   }
