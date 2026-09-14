@@ -52,8 +52,9 @@ const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export default function AdminPage() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [pinInput, setPinInput] = useState('');
-  const [pinError, setPinError] = useState('');
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [authError, setAuthError] = useState('');
 
   const [activeTab, setActiveTab] = useState<'bookings' | 'schedules' | 'members'>('bookings');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -74,19 +75,26 @@ export default function AdminPage() {
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === '1111' || pinInput === 'admin11' || pinInput === '11fc') {
+    const u = adminUsername.trim().toLowerCase();
+    const p = adminPassword.trim();
+    if (
+      (u === 'admin' && (p === 'admin11' || p === 'admin11fightcamp' || p === '11fightcamp' || p === '1111')) ||
+      (u === 'admin11' && (p === 'admin11' || p === 'admin11fightcamp' || p === '11fightcamp' || p === '1111')) ||
+      (u === '11fc' && (p === '11fc' || p === '1111'))
+    ) {
       sessionStorage.setItem('11fc_admin_auth', 'true');
       setIsAdminLoggedIn(true);
-      setPinError('');
+      setAuthError('');
     } else {
-      setPinError('PIN Admin salah. Masukkan PIN yang benar (Default: 1111).');
+      setAuthError('Username atau Password Admin salah. Masukkan kredensial yang benar.');
     }
   };
 
   const handleAdminLogout = () => {
     sessionStorage.removeItem('11fc_admin_auth');
     setIsAdminLoggedIn(false);
-    setPinInput('');
+    setAdminUsername('');
+    setAdminPassword('');
   };
 
   // New Schedule Modal / Form State
@@ -355,7 +363,7 @@ export default function AdminPage() {
   const totalRevenue = bookingRevenue + memberRevenue;
   const activeMembersCount = members.filter((m) => m.status === 'active').length;
 
-  // 1. PIN AUTHENTICATION GATE (Prevents direct unauthorized public access)
+  // 1. ADMIN USERNAME & PASSWORD AUTHENTICATION GATE
   if (!isAdminLoggedIn) {
     return (
       <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col">
@@ -372,42 +380,63 @@ export default function AdminPage() {
                 Official Staff Access
               </span>
               <h1 className="text-2xl font-black text-white uppercase mt-1">
-                Portal Admin Sasana
+                Login Admin Sasana
               </h1>
               <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
-                Halaman ini dilindungi untuk privasi data member & operasional 11 Fight Camp. Masukkan PIN Admin untuk melanjutkan.
+                Halaman ini dilindungi untuk keamanan data sasana. Masukkan username dan password staf admin.
               </p>
             </div>
 
-            <form onSubmit={handleAdminLogin} className="space-y-4">
+            <form onSubmit={handleAdminLogin} className="space-y-3.5 text-left">
               <div>
+                <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                  Username Admin
+                </label>
                 <input
-                  type="password"
-                  placeholder="Masukkan 4 Digit PIN Admin"
-                  value={pinInput}
+                  type="text"
+                  placeholder="Username (contoh: admin)"
+                  value={adminUsername}
                   onChange={(e) => {
-                    setPinInput(e.target.value);
-                    if (pinError) setPinError('');
+                    setAdminUsername(e.target.value);
+                    if (authError) setAuthError('');
                   }}
-                  className="w-full px-4 py-3.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-center text-lg tracking-widest font-mono focus:outline-none focus:border-[#ba2d1d]"
+                  className="w-full px-4 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
                   autoFocus
                   required
                 />
-                {pinError && (
-                  <p className="text-xs text-rose-400 font-bold mt-2">{pinError}</p>
-                )}
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                  Password Admin
+                </label>
+                <input
+                  type="password"
+                  placeholder="Password admin"
+                  value={adminPassword}
+                  onChange={(e) => {
+                    setAdminPassword(e.target.value);
+                    if (authError) setAuthError('');
+                  }}
+                  className="w-full px-4 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
+                  required
+                />
+              </div>
+
+              {authError && (
+                <p className="text-xs text-rose-400 font-bold">{authError}</p>
+              )}
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all"
+                className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all mt-2"
               >
-                Buka Panel Admin
+                Masuk ke Panel Admin
               </button>
             </form>
 
             <div className="pt-2 border-t border-zinc-800 text-[11px] text-zinc-500">
-              Default PIN Admin: <span className="font-mono text-zinc-400 font-bold">1111</span>
+              Kredensial Default: <span className="font-mono text-zinc-400 font-bold">admin / admin11</span>
             </div>
           </div>
         </main>

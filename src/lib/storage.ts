@@ -331,6 +331,8 @@ export async function fetchMembers(): Promise<Member[]> {
           memberCode: m.member_code,
           name: m.name,
           phone: m.phone,
+          username: m.username || undefined,
+          password: m.password || undefined,
           email: m.email || undefined,
           planId: m.plan_id,
           planTitle: m.plan_title,
@@ -357,6 +359,8 @@ export async function fetchMembers(): Promise<Member[]> {
 export async function saveNewMember(data: {
   name: string;
   phone: string;
+  username?: string;
+  password?: string;
   email?: string;
   planId: string;
   planTitle: string;
@@ -389,6 +393,8 @@ export async function saveNewMember(data: {
     memberCode,
     name: data.name.trim(),
     phone: data.phone.trim(),
+    username: data.username?.trim(),
+    password: data.password?.trim(),
     email: data.email?.trim(),
     planId: data.planId,
     planTitle: data.planTitle,
@@ -411,6 +417,8 @@ export async function saveNewMember(data: {
         member_code: newMember.memberCode,
         name: newMember.name,
         phone: newMember.phone,
+        username: newMember.username || null,
+        password: newMember.password || null,
         email: newMember.email || null,
         plan_id: newMember.planId,
         plan_title: newMember.planTitle,

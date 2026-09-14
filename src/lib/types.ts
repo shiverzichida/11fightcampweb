@@ -80,6 +80,8 @@ export interface Member {
   memberCode: string; // e.g. 11FC-M001
   name: string;
   phone: string;
+  username?: string;
+  password?: string;
   email?: string;
   planId: string;
   planTitle: string;

@@ -64,6 +64,14 @@ function BookingContent() {
             setSelectedSchedule(match);
           }
         }
+
+        // Prefill name & phone if logged in via Member Portal
+        if (typeof window !== 'undefined') {
+          const savedName = localStorage.getItem('11fc_prefill_name');
+          const savedPhone = localStorage.getItem('11fc_prefill_phone');
+          if (savedName && !fullName) setFullName(savedName);
+          if (savedPhone && !phone) setPhone(savedPhone);
+        }
       } catch (err) {
         console.error('Error fetching schedules:', err);
       } finally {

@@ -29,6 +29,8 @@ export default function Pricing() {
   // Form State
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'transfer' | 'cash' | 'qris' | 'edc'>('transfer');
   const [notes, setNotes] = useState('');
@@ -72,6 +74,8 @@ export default function Pricing() {
       const newMember = await saveNewMember({
         name: fullName,
         phone,
+        username: username.trim() || phone.trim(),
+        password: password.trim() || '11fightcamp',
         email: email || undefined,
         planId: selectedPlan.id,
         planTitle: selectedPlan.title,
@@ -266,6 +270,35 @@ export default function Pricing() {
                       placeholder="08123456789"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-[#ba2d1d]"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Username Login (Opsional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: alexander11"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-[#ba2d1d]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Password Login Member *
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Buat password akun portal"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-[#ba2d1d]"
                       required
                     />

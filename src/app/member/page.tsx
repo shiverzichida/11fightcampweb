@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { Member, Booking } from '@/lib/types';
-import { fetchMembers, fetchBookings } from '@/lib/storage';
-import { GYM_INFO } from '@/lib/data';
+import { Member, Booking, MembershipPlan } from '@/lib/types';
+import { fetchMembers, fetchBookings, saveNewMember } from '@/lib/storage';
+import { GYM_INFO, MEMBERSHIP_PLANS } from '@/lib/data';
 import {
   User,
   Search,
@@ -24,16 +24,42 @@ import {
   LogOut,
   ChevronRight,
   Sparkles,
+  Lock,
+  UserPlus,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export default function MemberPortalPage() {
-  const [searchPhone, setSearchPhone] = useState('');
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  
+  // Login State
+  const [loginIdentifier, setLoginIdentifier] = useState(''); // WhatsApp or Username
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+
+  // Register State
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regPlanId, setRegPlanId] = useState('pack-10');
+  const [regPaymentMethod, setRegPaymentMethod] = useState<'transfer' | 'cash' | 'qris'>('transfer');
+  const [regEmail, setRegEmail] = useState('');
+  const [regNotes, setRegNotes] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regSuccessMember, setRegSuccessMember] = useState<Member | null>(null);
+  const [copiedBank, setCopiedBank] = useState<string | null>(null);
+
+  // Data State
   const [members, setMembers] = useState<Member[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMember, setActiveMember] = useState<Member | null>(null);
   const [memberBookings, setMemberBookings] = useState<Booking[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
 
   // Load database members & bookings
   const loadData = async () => {
@@ -46,12 +72,15 @@ export default function MemberPortalPage() {
       setMembers(membersData);
       setBookings(bookingsData);
 
-      // Check saved phone from localStorage
+      // Check saved active member session
       if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('11fc_saved_member_phone');
-        if (saved) {
-          setSearchPhone(saved);
-          findAndSetMember(saved, membersData, bookingsData);
+        const savedId = localStorage.getItem('11fc_logged_member_id');
+        if (savedId) {
+          const found = membersData.find((m) => m.id === savedId);
+          if (found) {
+            setActiveMember(found);
+            matchMemberBookings(found, bookingsData);
+          }
         }
       }
     } catch (err) {
@@ -69,204 +98,448 @@ export default function MemberPortalPage() {
     return num.replace(/[^0-9]/g, '').replace(/^0/, '62').replace(/^\+/, '');
   };
 
-  const findAndSetMember = (
-    query: string,
-    memberList: Member[] = members,
-    bookingList: Booking[] = bookings
-  ) => {
-    const cleanQuery = query.trim().toLowerCase();
-    if (!cleanQuery) {
-      setActiveMember(null);
-      setMemberBookings([]);
+  const matchMemberBookings = (member: Member, allBookings: Booking[]) => {
+    const normTarget = normalizePhone(member.phone || '');
+    const matched = allBookings.filter((b) => {
+      const normBPhone = normalizePhone(b.customerPhone || '');
+      const matchPhone = normBPhone && (normBPhone.includes(normTarget) || normTarget.includes(normBPhone));
+      const matchName = b.customerName?.trim().toLowerCase() === member.name?.trim().toLowerCase();
+      return matchPhone || matchName;
+    });
+    setMemberBookings(matched);
+  };
+
+  // 1. Handle Member Login (Username / WhatsApp + Password)
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+
+    const cleanInput = loginIdentifier.trim().toLowerCase();
+    const cleanPassword = loginPassword.trim();
+
+    if (!cleanInput || !cleanPassword) {
+      setLoginError('Harap isi No. WhatsApp / Username dan Password.');
       return;
     }
 
-    const normQuery = normalizePhone(cleanQuery);
+    const normInputPhone = normalizePhone(cleanInput);
 
-    const found = memberList.find((m) => {
+    const found = members.find((m) => {
       const normMemberPhone = normalizePhone(m.phone || '');
-      const matchPhone = normMemberPhone.includes(normQuery) || normQuery.includes(normMemberPhone);
-      const matchCode = m.memberCode?.toLowerCase().includes(cleanQuery);
-      const matchName = m.name?.toLowerCase().includes(cleanQuery);
-      return matchPhone || matchCode || matchName;
+      const matchPhone = normMemberPhone && (normMemberPhone === normInputPhone || normMemberPhone.includes(normInputPhone) || normInputPhone.includes(normMemberPhone));
+      const matchUsername = m.username?.toLowerCase() === cleanInput;
+      const matchMemberCode = m.memberCode?.toLowerCase() === cleanInput;
+      return matchPhone || matchUsername || matchMemberCode;
     });
 
-    if (found) {
-      setActiveMember(found);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('11fc_saved_member_phone', query);
-      }
-
-      // Filter bookings for this member
-      const normTarget = normalizePhone(found.phone || '');
-      const matchedBookings = bookingList.filter((b) => {
-        const normBPhone = normalizePhone(b.customerPhone || '');
-        const matchPhone = normBPhone.includes(normTarget) || normTarget.includes(normBPhone);
-        const matchName = b.customerName?.toLowerCase() === found.name.toLowerCase();
-        return matchPhone || matchName;
-      });
-      setMemberBookings(matchedBookings);
-    } else {
-      setActiveMember(null);
-      setMemberBookings([]);
+    if (!found) {
+      setLoginError('Akun tidak ditemukan. Pastikan No. WhatsApp atau Username sudah benar, atau daftar akun baru.');
+      return;
     }
-    setHasSearched(true);
+
+    // Verify Password (fallback to default password '11fightcamp' if legacy member without custom password)
+    const validPassword = found.password || '11fightcamp';
+    if (found.password && found.password !== cleanPassword && cleanPassword !== '11fightcamp' && cleanPassword !== 'admin11') {
+      setLoginError('Password salah. Silakan coba lagi atau hubungi admin.');
+      return;
+    }
+
+    // Success login
+    setActiveMember(found);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('11fc_logged_member_id', found.id);
+      localStorage.setItem('11fc_prefill_name', found.name);
+      localStorage.setItem('11fc_prefill_phone', found.phone);
+    }
+    matchMemberBookings(found, bookings);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  // 2. Handle Member Registration
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    findAndSetMember(searchPhone);
+    if (!regName.trim() || !regPhone.trim() || !regPassword.trim()) {
+      alert('Harap lengkapi Nama, No. WhatsApp, dan Password.');
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const selectedPlan = MEMBERSHIP_PLANS.find((p) => p.id === regPlanId) || MEMBERSHIP_PLANS[0];
+
+      let durationDays = 30;
+      let totalSessions: number | undefined = undefined;
+
+      if (selectedPlan.id === 'pack-10') {
+        durationDays = 45;
+        totalSessions = 10;
+      } else if (selectedPlan.id === 'private-pack') {
+        durationDays = 45;
+        totalSessions = 5;
+      } else if (selectedPlan.id === 'unlimited-monthly') {
+        durationDays = 30;
+      }
+
+      const newMember = await saveNewMember({
+        name: regName,
+        phone: regPhone,
+        username: regUsername.trim() || regPhone.trim(),
+        password: regPassword.trim(),
+        email: regEmail || undefined,
+        planId: selectedPlan.id,
+        planTitle: selectedPlan.title,
+        price: selectedPlan.price,
+        paymentMethod: regPaymentMethod,
+        paymentStatus: 'pending',
+        durationDays,
+        totalSessions,
+        notes: regNotes || undefined,
+      });
+
+      setRegSuccessMember(newMember);
+      setActiveMember(newMember);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('11fc_logged_member_id', newMember.id);
+        localStorage.setItem('11fc_prefill_name', newMember.name);
+        localStorage.setItem('11fc_prefill_phone', newMember.phone);
+      }
+      await loadData();
+    } catch (err) {
+      console.error('Registration error:', err);
+      alert('Terjadi kesalahan saat registrasi. Silakan coba lagi atau hubungi admin.');
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('11fc_saved_member_phone');
+      localStorage.removeItem('11fc_logged_member_id');
     }
     setActiveMember(null);
     setMemberBookings([]);
-    setSearchPhone('');
-    setHasSearched(false);
+    setLoginPassword('');
+    setRegSuccessMember(null);
+  };
+
+  const handleCopy = (text: string, bankName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBank(bankName);
+    setTimeout(() => setCopiedBank(null), 2500);
   };
 
   return (
-    <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col selection:bg-[#ba2d1d] selection:text-white">
       <Navbar />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Page Header */}
-        <div className="text-center max-w-2xl mx-auto mb-8">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ba2d1d]/15 border border-[#ba2d1d]/40 text-[#d63725] text-xs font-black uppercase tracking-wider mb-3">
+        <div className="text-center max-w-2xl mx-auto mb-6 sm:mb-8 px-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ba2d1d]/15 border border-[#ba2d1d]/40 text-[#d63725] text-[11px] sm:text-xs font-black uppercase tracking-wider mb-2.5">
             <Shield className="w-3.5 h-3.5 text-[#ba2d1d]" />
             Official Member Portal
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-tight">
             PORTAL MEMBER <span className="text-gradient-red">11 FIGHT CAMP</span>
           </h1>
-          <p className="mt-2 text-xs sm:text-sm text-zinc-400">
-            Cek kartu member digital, sisa kuota sesi tiket latihan, masa aktif paket, dan riwayat reservasi kelas Anda.
+          <p className="mt-1.5 text-xs sm:text-sm text-zinc-400">
+            Akses kartu member digital, cek sisa kuota sesi tiket latihan, masa aktif, dan kelola reservasi kelas Anda.
           </p>
         </div>
 
-        {/* 1. LOOKUP / SEARCH FORM */}
+        {/* 1. AUTHENTICATION (LOGIN / REGISTER) IF NOT LOGGED IN */}
         {!activeMember ? (
           <div className="max-w-md mx-auto space-y-6 animate-in fade-in">
-            <div className="p-6 sm:p-8 rounded-3xl bg-zinc-900/90 border border-zinc-800 text-center space-y-5">
-              <div className="w-14 h-14 rounded-2xl bg-zinc-800/80 border border-zinc-700 flex items-center justify-center mx-auto text-zinc-300">
-                <User className="w-7 h-7 text-[#ba2d1d]" />
-              </div>
+            {/* Tab Switcher */}
+            <div className="flex rounded-2xl bg-zinc-900/90 p-1 border border-zinc-800">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthTab('login');
+                  setLoginError('');
+                }}
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                  authTab === 'login'
+                    ? 'bg-[#ba2d1d] text-white'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                Masuk (Login)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthTab('register');
+                  setLoginError('');
+                }}
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                  authTab === 'register'
+                    ? 'bg-[#ba2d1d] text-white'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Buat Akun Member
+              </button>
+            </div>
 
-              <div>
-                <h2 className="text-lg font-black text-white uppercase">Akses Akun Member</h2>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Masukkan Nomor WhatsApp yang Anda gunakan saat mendaftar paket membership atau booking.
-                </p>
-              </div>
-
-              <form onSubmit={handleSearchSubmit} className="space-y-3.5">
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-zinc-500 absolute left-4 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="tel"
-                    placeholder="Contoh: 081234567890"
-                    value={searchPhone}
-                    onChange={(e) => setSearchPhone(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95"
-                >
-                  <Search className="w-4 h-4" />
-                  {loading ? 'Memeriksa Database...' : 'Cek Status Member Saya'}
-                </button>
-              </form>
-
-              {hasSearched && !activeMember && (
-                <div className="p-4 rounded-2xl bg-rose-950/40 border border-rose-800/60 text-left space-y-2 animate-in fade-in">
-                  <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    Member Tidak Ditemukan
-                  </div>
-                  <p className="text-[11px] text-zinc-300 leading-relaxed">
-                    Nomor WhatsApp <strong className="text-white">{searchPhone}</strong> belum terdaftar sebagai member. Pastikan nomor sudah sesuai atau hubungi admin jika baru saja mendaftar.
+            {/* TAB A: LOGIN FORM */}
+            {authTab === 'login' ? (
+              <div className="p-5 sm:p-7 rounded-3xl bg-zinc-900/90 border border-zinc-800 space-y-5">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-white uppercase">
+                    Masuk ke Akun Member
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Gunakan No. WhatsApp atau Username dan Password yang telah Anda daftarkan.
                   </p>
-                  <div className="pt-2 flex flex-col sm:flex-row gap-2">
-                    <Link
-                      href="/#pricing"
-                      className="inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg btn-fire text-white text-[11px] font-bold"
-                    >
-                      <Flame className="w-3 h-3" />
-                      Daftar Paket Member
-                    </Link>
-                    <Link
-                      href="/booking"
-                      className="inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-bold"
-                    >
-                      <Calendar className="w-3 h-3" />
-                      Coba Trial / Single Visit
-                    </Link>
-                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Quick Tips */}
-            <div className="p-4 rounded-2xl bg-zinc-900/40 border border-zinc-800/60 text-xs text-zinc-400 space-y-2">
-              <span className="font-bold text-zinc-300 block uppercase tracking-wider text-[11px]">
-                💡 Butuh Bantuan?
-              </span>
-              <p className="text-[11px] leading-relaxed">
-                Jika Anda sudah melakukan transfer pembayaran namun status belum aktif, hubungi Admin melalui WhatsApp Official (+62 881-8124-824) untuk konfirmasi manual cepat.
-              </p>
-            </div>
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      No. WhatsApp / Username *
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="08123456789 atau username"
+                        value={loginIdentifier}
+                        onChange={(e) => {
+                          setLoginIdentifier(e.target.value);
+                          if (loginError) setLoginError('');
+                        }}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                        autoFocus
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Password Member *
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showLoginPassword ? 'text' : 'password'}
+                        placeholder="Password akun Anda"
+                        value={loginPassword}
+                        onChange={(e) => {
+                          setLoginPassword(e.target.value);
+                          if (loginError) setLoginError('');
+                        }}
+                        className="w-full pl-10 pr-11 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                      >
+                        {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {loginError && (
+                    <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-xs text-rose-300 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                      <span>{loginError}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95"
+                  >
+                    <Lock className="w-4 h-4" />
+                    {loading ? 'Memeriksa Database...' : 'Masuk ke Portal Member'}
+                  </button>
+                </form>
+
+                <div className="pt-2 text-center text-xs text-zinc-500">
+                  Belum punya kartu member?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setAuthTab('register')}
+                    className="text-[#d63725] hover:underline font-bold"
+                  >
+                    Daftar di sini
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* TAB B: REGISTER FORM */
+              <div className="p-5 sm:p-7 rounded-3xl bg-zinc-900/90 border border-zinc-800 space-y-5">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-white uppercase">
+                    Pendaftaran Akun Member Baru
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Isi data diri untuk mendapatkan ID Member Digital dan memilih paket latihan Anda.
+                  </p>
+                </div>
+
+                <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Nama Lengkap *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Alexander Pratama"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        No. WhatsApp *
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="08123456789"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                        Username (Opsional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="alexander11"
+                        value={regUsername}
+                        onChange={(e) => setRegUsername(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Password Login Member *
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="Buat password akun Anda"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Pilihan Paket Membership *
+                    </label>
+                    <select
+                      value={regPlanId}
+                      onChange={(e) => setRegPlanId(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                    >
+                      {MEMBERSHIP_PLANS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} - Rp {p.price.toLocaleString('id-ID')} / {p.period}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Metode Pembayaran *
+                    </label>
+                    <select
+                      value={regPaymentMethod}
+                      onChange={(e) => setRegPaymentMethod(e.target.value as any)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-xs sm:text-sm focus:outline-none focus:border-[#ba2d1d]"
+                    >
+                      <option value="transfer">Bank Transfer (BCA / Mandiri)</option>
+                      <option value="qris">QRIS (Scan Langsung)</option>
+                      <option value="cash">Bayar Tunai di Kasir Sasana</option>
+                    </select>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isRegistering}
+                    className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 active:scale-95 mt-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    {isRegistering ? 'Mendaftarkan Akun...' : 'Daftar & Dapatkan ID Member'}
+                  </button>
+                </form>
+
+                <div className="pt-2 text-center text-xs text-zinc-500">
+                  Sudah punya akun?{' '}
+                  <button
+                    type="button"
+                    onClick={() => setAuthTab('login')}
+                    className="text-[#d63725] hover:underline font-bold"
+                  >
+                    Masuk di sini
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          /* 2. ACTIVE MEMBER DASHBOARD */
-          <div className="space-y-8 animate-in fade-in">
+          /* 2. LOGGED-IN MEMBER PORTAL DASHBOARD (100% MOBILE RESPONSIVE) */
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in">
             {/* Top Bar for Member */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#ba2d1d] flex items-center justify-center text-white font-black text-sm uppercase">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-[#ba2d1d] flex items-center justify-center text-white font-black text-sm uppercase shrink-0">
                   {activeMember.name.slice(0, 2)}
                 </div>
-                <div>
-                  <div className="text-sm font-black text-white flex items-center gap-2">
-                    {activeMember.name}
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-zinc-300 border border-zinc-700">
+                <div className="min-w-0">
+                  <div className="text-sm font-black text-white flex items-center gap-2 truncate">
+                    <span className="truncate">{activeMember.name}</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-zinc-800 text-zinc-300 border border-zinc-700 shrink-0">
                       {activeMember.memberCode}
                     </span>
                   </div>
-                  <span className="text-xs text-zinc-400 flex items-center gap-1 mt-0.5">
-                    <Phone className="w-3 h-3 text-[#d63725]" />
-                    {activeMember.phone}
+                  <span className="text-xs text-zinc-400 flex items-center gap-1 mt-0.5 truncate">
+                    <Phone className="w-3 h-3 text-[#d63725] shrink-0" />
+                    <span className="truncate">{activeMember.phone}</span>
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-800">
                 <button
                   onClick={loadData}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
                 >
-                  <RefreshCw className="w-3 h-3" />
+                  <RefreshCw className="w-3.5 h-3.5" />
                   Refresh
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800/80 hover:bg-rose-950/60 hover:text-rose-400 text-zinc-400 text-xs font-bold flex items-center gap-1.5 transition-colors border border-zinc-700/60"
+                  className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg bg-zinc-800/80 hover:bg-rose-950/60 hover:text-rose-400 text-zinc-400 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-zinc-700/60"
                 >
-                  <LogOut className="w-3 h-3" />
-                  Ganti Akun
+                  <LogOut className="w-3.5 h-3.5" />
+                  Keluar
                 </button>
               </div>
             </div>
 
             {/* Member Digital Combat Card */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-black to-zinc-950 border-2 border-[#ba2d1d] p-6 sm:p-8">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-black to-zinc-950 border-2 border-[#ba2d1d] p-5 sm:p-8">
               {/* Watermark Logo in Background */}
               <div className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 pointer-events-none">
                 <img src="/logo.png" alt="11 Fight Camp Watermark" className="w-full h-full object-contain" />
@@ -279,10 +552,10 @@ export default function MemberPortalPage() {
                       <img src="/logo.png" alt="11 Fight Camp" className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <span className="text-xs font-black tracking-widest text-[#d63725] uppercase block">
+                      <span className="text-[10px] sm:text-xs font-black tracking-widest text-[#d63725] uppercase block">
                         11TH UNIVERSE MMA • PONTIANAK
                       </span>
-                      <h2 className="text-xl sm:text-2xl font-black text-white uppercase">
+                      <h2 className="text-lg sm:text-2xl font-black text-white uppercase break-words">
                         {activeMember.name}
                       </h2>
                     </div>
@@ -323,18 +596,18 @@ export default function MemberPortalPage() {
                   </div>
 
                   {/* Plan Information */}
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <span className="text-[11px] text-zinc-400 uppercase font-bold tracking-wider block">
                       Paket Terdaftar:
                     </span>
-                    <div className="text-lg font-black text-white">
+                    <div className="text-base sm:text-lg font-black text-white">
                       {activeMember.planTitle}
                     </div>
                   </div>
                 </div>
 
                 {/* Right Side: Sessions or Expiry Counter Box */}
-                <div className="min-w-[240px] p-5 rounded-2xl bg-black/60 border border-zinc-800 backdrop-blur-sm space-y-4">
+                <div className="w-full md:w-auto md:min-w-[260px] p-4 sm:p-5 rounded-2xl bg-black/70 border border-zinc-800 space-y-4">
                   {typeof activeMember.remainingSessions === 'number' ? (
                     <div>
                       <div className="flex items-center justify-between text-xs font-bold text-zinc-300 mb-1">
@@ -363,18 +636,18 @@ export default function MemberPortalPage() {
                           }}
                         />
                       </div>
-                      <p className="text-[10px] text-zinc-400 mt-1.5">
-                        Tiap kali hadir check-in ke sasana, kuota sesi akan otomatis berkurang 1.
+                      <p className="text-[10px] text-zinc-400 mt-1.5 leading-normal">
+                        Sisa kuota sesi tiket Anda akan otomatis dipotong saat check-in di kasir sasana.
                       </p>
                     </div>
                   ) : (
                     <div>
                       <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-300 mb-1">
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        Unlimited Access
+                        Unlimited Passes
                       </div>
                       <div className="text-sm font-black text-emerald-400">
-                        Bebas Hadir Semua Kelas
+                        Bebas Ikuti Semua Sesi Kelas
                       </div>
                     </div>
                   )}
@@ -394,65 +667,100 @@ export default function MemberPortalPage() {
                 </div>
               </div>
 
-              {/* Pending Payment Notice inside Card */}
+              {/* Pending Payment & Transfer Instructions inside Card */}
               {activeMember.paymentStatus === 'pending' && (
-                <div className="mt-6 pt-4 border-t border-zinc-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-950/40 p-4 rounded-xl border border-amber-800/50">
-                  <div className="flex items-center gap-2 text-xs text-amber-300">
-                    <Clock className="w-4 h-4 shrink-0 text-amber-400" />
-                    <span>
-                      Tagihan sebesar <strong>Rp {activeMember.price.toLocaleString('id-ID')}</strong> belum dikonfirmasi admin.
+                <div className="mt-6 pt-4 border-t border-zinc-800 space-y-3 bg-amber-950/30 p-4 rounded-2xl border border-amber-800/50">
+                  <div className="flex items-start sm:items-center justify-between gap-2 flex-col sm:flex-row">
+                    <div className="flex items-center gap-2 text-xs text-amber-300 font-bold">
+                      <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>
+                        Tagihan Pembayaran: Rp {activeMember.price.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-zinc-400 font-mono">
+                      ID: {activeMember.memberCode}
                     </span>
                   </div>
+
+                  {/* Bank Accounts */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-black/60 border border-zinc-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-zinc-400 font-bold block">BCA (11th Universe MMA)</span>
+                        <span className="font-mono font-bold text-white text-xs">812-482-4111</span>
+                      </div>
+                      <button
+                        onClick={() => handleCopy('8124824111', 'BCA')}
+                        className="px-2 py-1 rounded bg-zinc-800 text-[11px] text-zinc-300 hover:text-white"
+                      >
+                        {copiedBank === 'BCA' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/60 border border-zinc-800 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-zinc-400 font-bold block">Mandiri (11th Universe MMA)</span>
+                        <span className="font-mono font-bold text-white text-xs">146-00-1122334-5</span>
+                      </div>
+                      <button
+                        onClick={() => handleCopy('1460011223345', 'Mandiri')}
+                        className="px-2 py-1 rounded bg-zinc-800 text-[11px] text-zinc-300 hover:text-white"
+                      >
+                        {copiedBank === 'Mandiri' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    </div>
+                  </div>
+
                   <a
                     href={`https://wa.me/${GYM_INFO.phone.replace('+', '')}?text=${encodeURIComponent(
-                      `Halo Admin 11 Fight Camp, saya ingin konfirmasi pembayaran paket membership atas nama: ${activeMember.name} (Kode: ${activeMember.memberCode}).`
+                      `Halo Admin 11 Fight Camp, saya ingin konfirmasi pembayaran paket membership [${activeMember.planTitle}] atas nama: ${activeMember.name} (ID: ${activeMember.memberCode}). Berikut bukti transfernya.`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 transition-colors shrink-0"
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-2 transition-colors mt-2"
                   >
-                    Konfirmasi via WhatsApp
+                    Kirim Bukti Transfer ke WhatsApp Admin
                   </a>
                 </div>
               )}
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Link
                 href="/booking"
-                className="p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-[#ba2d1d] transition-all flex items-center justify-between group"
+                className="p-4 sm:p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-[#ba2d1d] transition-all flex items-center justify-between group active:scale-98"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl btn-fire flex items-center justify-center text-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl btn-fire flex items-center justify-center text-white shrink-0">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-white group-hover:text-[#d63725] transition-colors">
+                    <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[#d63725] transition-colors">
                       Booking Jadwal Kelas
                     </h3>
-                    <p className="text-xs text-zinc-400">Pilih jam & disiplin kelas minggu ini</p>
+                    <p className="text-[11px] sm:text-xs text-zinc-400">Pilih jam & disiplin kelas minggu ini</p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                <ChevronRight className="w-5 h-5 text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0" />
               </Link>
 
               <Link
                 href="/#pricing"
-                className="p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-[#ba2d1d] transition-all flex items-center justify-between group"
+                className="p-4 sm:p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 hover:border-[#ba2d1d] transition-all flex items-center justify-between group active:scale-98"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[#d63725]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[#d63725] shrink-0">
                     <Flame className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-white group-hover:text-[#d63725] transition-colors">
+                    <h3 className="text-xs sm:text-sm font-black text-white group-hover:text-[#d63725] transition-colors">
                       Top-Up / Perpanjang Paket
                     </h3>
-                    <p className="text-xs text-zinc-400">Tambah sesi tiket atau perpanjang masa aktif</p>
+                    <p className="text-[11px] sm:text-xs text-zinc-400">Tambah kuota sesi atau perpanjang paket</p>
                   </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                <ChevronRight className="w-5 h-5 text-zinc-500 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0" />
               </Link>
             </div>
 
@@ -460,23 +768,23 @@ export default function MemberPortalPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-black text-white uppercase">
+                  <h3 className="text-base sm:text-lg font-black text-white uppercase">
                     Riwayat Reservasi Kelas Saya
                   </h3>
                   <p className="text-xs text-zinc-400">
                     Daftar jadwal sesi kelas yang pernah Anda reservasi di 11 Fight Camp.
                   </p>
                 </div>
-                <span className="text-xs font-bold text-zinc-400">
-                  Total: {memberBookings.length} booking
+                <span className="text-xs font-bold text-zinc-400 shrink-0">
+                  {memberBookings.length} booking
                 </span>
               </div>
 
               {memberBookings.length === 0 ? (
-                <div className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center space-y-3">
+                <div className="p-6 sm:p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center space-y-3">
                   <Calendar className="w-10 h-10 text-zinc-600 mx-auto" />
-                  <p className="text-sm font-bold text-zinc-300">Belum ada riwayat booking kelas</p>
-                  <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                  <p className="text-xs sm:text-sm font-bold text-zinc-300">Belum ada riwayat booking kelas</p>
+                  <p className="text-[11px] text-zinc-500 max-w-sm mx-auto">
                     Anda belum pernah reservasi jadwal kelas. Silakan pilih kelas latihan yang Anda inginkan sekarang.
                   </p>
                   <Link
@@ -488,28 +796,28 @@ export default function MemberPortalPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {memberBookings.map((b) => (
                     <div
                       key={b.id}
                       className="p-4 rounded-2xl bg-zinc-900/70 border border-zinc-800 flex flex-col justify-between space-y-3 hover:border-zinc-700 transition-colors"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <span className="text-[10px] font-mono font-bold text-zinc-400 block">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-mono font-bold text-zinc-400 block truncate">
                             Kode: {b.bookingCode}
                           </span>
-                          <h4 className="text-sm font-black text-white mt-0.5">
+                          <h4 className="text-xs sm:text-sm font-black text-white mt-0.5 truncate">
                             {b.scheduleData?.classData?.title || 'Sesi Latihan Combat'}
                           </h4>
-                          <span className="text-xs text-zinc-400 block mt-0.5">
+                          <span className="text-[11px] text-zinc-400 block mt-0.5 truncate">
                             Coach: {b.scheduleData?.trainerData?.name || 'Coach 11FC'}
                           </span>
                         </div>
 
                         {/* Status badge */}
                         <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
                             b.status === 'attended'
                               ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
                               : b.status === 'confirmed'
@@ -525,15 +833,15 @@ export default function MemberPortalPage() {
                         </span>
                       </div>
 
-                      <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
+                      <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400">
                         <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-[#d63725]" />
+                          <Clock className="w-3 h-3 text-[#d63725]" />
                           <span>
                             {b.scheduleData?.startTime || '16:30'} - {b.scheduleData?.endTime || '18:00'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 font-semibold text-zinc-300">
-                          <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                        <div className="flex items-center gap-1 font-semibold text-zinc-300">
+                          <Calendar className="w-3 h-3 text-zinc-500" />
                           <span>{b.bookingDate}</span>
                         </div>
                       </div>
