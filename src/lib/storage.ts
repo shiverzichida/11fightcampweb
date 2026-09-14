@@ -51,7 +51,14 @@ export async function fetchClasses(): Promise<ClassItem[]> {
       console.warn('Supabase fetch classes error, falling back to local:', err);
     }
   }
-  return getLocalItem<ClassItem[]>(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+  const localItems = getLocalItem<ClassItem[]>(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+  return localItems.map((item) => {
+    const fresh = INITIAL_CLASSES.find((ic) => ic.id === item.id);
+    if (fresh && (item.imageUrl?.includes('unsplash') || !item.imageUrl)) {
+      return { ...item, imageUrl: fresh.imageUrl };
+    }
+    return item;
+  });
 }
 
 // 2. TRAINERS
