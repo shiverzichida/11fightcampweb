@@ -32,9 +32,6 @@ function BookingContent() {
   // Date selection (Defaults to tomorrow or today if early)
   const getInitialDate = () => {
     const today = new Date();
-    if (today.getDay() === 0) {
-      today.setDate(today.getDate() + 1);
-    }
     return today.toISOString().split('T')[0];
   };
 
@@ -339,13 +336,6 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                   required
                 />
               </div>
-
-              {currentDayOfWeek === 0 && (
-                <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  Hari Minggu tidak ada kelas reguler. Silakan pilih hari Senin hingga Sabtu, atau hubungi admin untuk sesi privat khusus.
-                </div>
-              )}
             </div>
 
             {/* Step 2: Pilih Slot Jadwal */}

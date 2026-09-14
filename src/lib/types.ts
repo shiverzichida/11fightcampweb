@@ -1,9 +1,21 @@
-export type Category = 'all' | 'muay-thai' | 'boxing' | 'bjj' | 'mma' | 'conditioning' | 'private';
+export type Category = 
+  | 'all' 
+  | 'striking' 
+  | 'bjj' 
+  | 'hyrox' 
+  | 'kids' 
+  | 'yoga' 
+  | 'zumba' 
+  | 'muay-thai' 
+  | 'boxing' 
+  | 'mma' 
+  | 'conditioning' 
+  | 'private';
 
 export interface ClassItem {
   id: string;
   title: string;
-  category: 'muay-thai' | 'boxing' | 'bjj' | 'mma' | 'conditioning' | 'private';
+  category: Category;
   description: string;
   durationMinutes: number;
   intensity: 'Beginner Friendly' | 'Intermediate' | 'High Intensity' | 'All Levels';

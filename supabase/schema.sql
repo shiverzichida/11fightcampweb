@@ -1,6 +1,6 @@
 -- ==============================================================================
--- 11 FIGHT CAMP (PONTIANAK) - SUPABASE DATABASE SCHEMA
--- Execute this SQL in Supabase SQL Editor to set up tables and initial seed data.
+-- 11TH UNIVERSE MMA / 11 FIGHT CAMP (PONTIANAK) - SUPABASE DATABASE SCHEMA
+-- Execute this SQL in Supabase SQL Editor to set up tables and official seed data.
 -- ==============================================================================
 
 -- 1. Classes Table
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.classes (
   title TEXT NOT NULL,
   category TEXT NOT NULL,
   description TEXT,
-  duration_minutes INT NOT NULL DEFAULT 90,
+  duration_minutes INT NOT NULL DEFAULT 75,
   intensity TEXT DEFAULT 'All Levels',
   image_url TEXT,
   equipment_needed TEXT[],
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.schedules (
   day_of_week INT NOT NULL, -- 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   start_time TIME NOT NULL,
   end_time TIME NOT NULL,
-  max_capacity INT NOT NULL DEFAULT 15,
+  max_capacity INT NOT NULL DEFAULT 16,
   price NUMERIC NOT NULL DEFAULT 75000,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   customer_name TEXT NOT NULL,
   customer_phone TEXT NOT NULL,
   customer_email TEXT,
-  experience_level TEXT DEFAULT 'beginner',
+  experience_level TEXT DEFAULT 'first_time',
   status TEXT DEFAULT 'confirmed', -- 'confirmed', 'attended', 'cancelled'
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -81,37 +81,77 @@ CREATE POLICY "Allow authenticated full access on schedules" ON public.schedules
 CREATE POLICY "Allow authenticated full access on bookings" ON public.bookings FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- ==============================================================================
--- SEED DATA
+-- OFFICIAL SEED DATA - 11TH UNIVERSE MMA
 -- ==============================================================================
 
 INSERT INTO public.classes (id, title, category, description, duration_minutes, intensity, image_url, equipment_needed, benefits)
 VALUES
-('class-muay-thai', 'Muay Thai (The Art of 8 Limbs)', 'muay-thai', 'Seni bela diri Thailand pukulan, tendangan, sikutan, dan lutut.', 90, 'All Levels', 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1000&q=80', ARRAY['Handwrap', 'Glove', 'Baju Olahraga'], ARRAY['Cardio 900kcal', 'Striking Mastery', 'Mental Toughness']),
-('class-boxing', 'Boxing & Sweet Science', 'boxing', 'Teknik tinju murni, footwork, pad work, dan heavy bag.', 75, 'All Levels', 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=1000&q=80', ARRAY['Handwrap', 'Glove 12-14oz'], ARRAY['Agility', 'Core Strength', 'Reflex']),
-('class-bjj', 'Brazilian Jiu-Jitsu (BJJ)', 'bjj', 'Seni ground fighting, leverage, dan submission.', 90, 'Beginner Friendly', 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1000&q=80', ARRAY['Gi / Rashguard', 'Mouthguard'], ARRAY['Submission Lock', 'Ground Defense', 'Low Joint Impact']),
-('class-mma', 'MMA (Mixed Martial Arts)', 'mma', 'Integrasi striking dan wrestling dalam cage.', 90, 'High Intensity', 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1000&q=80', ARRAY['MMA Glove', 'Shin Guards'], ARRAY['Total Combat Readiness', 'Ultimate Conditioning']),
-('class-conditioning', 'Fighter Strength & HIIT', 'conditioning', 'Latihan fungsional pembakar lemak khas petarung.', 60, 'High Intensity', 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=80', ARRAY['Air Minum', 'Handuk'], ARRAY['Fat Loss', 'Stamina', 'Toned Physique'])
+('class-striking', 'Striking (Muay Thai & Boxing)', 'striking', 'Pukulan, tendangan, pad work dan heavy bag.', 75, 'All Levels', 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1000&q=80', ARRAY['Handwrap', 'Glove', 'Baju Olahraga'], ARRAY['Bakar 700kcal', 'Teknik Pukul & Tendang', 'Reflek & Cardio']),
+('class-bjj', 'Brazilian Jiu-Jitsu (BJJ)', 'bjj', 'Ground fighting, submissions, dan kuncian praktis.', 90, 'All Levels', 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1000&q=80', ARRAY['Gi / Rashguard', 'Mouthguard'], ARRAY['Submission Lock', 'Ground Defense', 'Core Stability']),
+('class-hyrox', 'HYROX Functional Fitness', 'hyrox', 'Kombinasi lari dan functional training intensitas tinggi.', 60, 'High Intensity', 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=80', ARRAY['Sepatu Running', 'Handuk', 'Air Minum'], ARRAY['Endurance Maksimal', 'Fat Loss Cepat', 'Stamina Tinggi']),
+('class-bjj-kids', 'BJJ Kids', 'kids', 'Kelas BJJ anak melatih disiplin, anti-bullying, dan kelincahan.', 60, 'Beginner Friendly', 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1000&q=80', ARRAY['Pakaian Olahraga / Gi'], ARRAY['Fokus & Disiplin', 'Anti-Bullying', 'Motorik']),
+('class-muaykids', 'Muaykids (Muay Thai Kids)', 'kids', 'Dasar Muay Thai anak dengan cara yang aman dan seru.', 60, 'Beginner Friendly', 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=1000&q=80', ARRAY['Glove Anak'], ARRAY['Kebugaran', 'Koordinasi', 'Self-Confidence']),
+('class-yoga-hatha', 'Yoga Hatha', 'yoga', 'Peregangan sendi, fleksibilitas otot, dan pernapasan.', 75, 'Beginner Friendly', 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=1000&q=80', ARRAY['Matras (Disediakan)'], ARRAY['Recovery Otot', 'Anti-Stres', 'Fleksibilitas']),
+('class-yoga-if', 'Yoga IF (Intermediate Flow)', 'yoga', 'Flow yoga dinamis untuk perbaikan postur dan stamina.', 75, 'Intermediate', 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1000&q=80', ARRAY['Matras Yoga'], ARRAY['Postur Tubuh', 'Keseimbangan']),
+('class-zumba', 'Zumba Dance Fitness', 'zumba', 'Senam kardio dan tarian berenergi tinggi pembakar kalori.', 60, 'All Levels', 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1000&q=80', ARRAY['Sepatu Senam'], ARRAY['Bakar 500kcal', 'Mood Booster'])
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.trainers (id, name, role, specialty, bio, photo_url, instagram, achievements)
 VALUES
-('trainer-1', 'Coach Kevin "The Striker"', 'Head Muay Thai Coach', 'Muay Thai & K1 Striking', 'Atlet kompetisi striking dengan pengalaman lebih dari 8 tahun.', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['Regional Muay Thai Champ', 'Head Coach 11FC']),
-('trainer-2', 'Coach David "The Anaconda"', 'BJJ & MMA Specialist', 'Brazilian Jiu-Jitsu (BJJ)', 'Praktisi BJJ dengan pemahaman kuncian sendi dan takedown.', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['BJJ Purple Belt', 'Submission Specialist']),
-('trainer-3', 'Coach Aris "Thunder"', 'Boxing Coach', 'Boxing & Conditioning', 'Spesialis footwork, reflek pertahanan, dan program cutting berat badan.', 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['Amateur Boxing Veteran', 'Strength Mentor'])
+('trainer-kevin', 'Coach Kevin', 'Head Striking Coach', 'Muay Thai & Boxing', 'Pelatih kepala striking 11th Universe MMA.', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['Head Striking Coach', 'Fighter Veteran']),
+('trainer-david', 'Coach David', 'BJJ Specialist', 'Brazilian Jiu-Jitsu (BJJ)', 'Spesialis kuncian ground fighting dewasa dan anak.', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['BJJ Specialist', 'Kids Martial Arts Coach']),
+('trainer-aris', 'Coach Aris', 'Hyrox Lead', 'Hyrox & Conditioning', 'Lead coach program functional race Hyrox.', 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['Hyrox Certified Coach', 'Endurance Coach']),
+('trainer-sarah', 'Coach Sarah', 'Yoga Instructor', 'Yoga Hatha & Mobility', 'Instruktur yoga dan pemulihan sendi.', 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['Certified Yoga Alliance']),
+('trainer-cindy', 'Coach Cindy', 'Zumba Lead', 'Zumba Fitness', 'Instruktur tari kardio berenergi tinggi.', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80', '11fightcamp', ARRAY['Licensed Zumba Instructor'])
 ON CONFLICT (id) DO NOTHING;
 
+-- Official Matrix Schedules
 INSERT INTO public.schedules (id, class_id, trainer_id, day_of_week, start_time, end_time, max_capacity, price, is_active)
 VALUES
-('sch-mon-1', 'class-muay-thai', 'trainer-1', 1, '16:30', '18:00', 15, 75000, true),
-('sch-mon-2', 'class-boxing', 'trainer-3', 1, '19:00', '20:30', 12, 75000, true),
-('sch-tue-1', 'class-bjj', 'trainer-2', 2, '16:30', '18:00', 14, 80000, true),
-('sch-tue-2', 'class-conditioning', 'trainer-3', 2, '19:00', '20:15', 16, 65000, true),
-('sch-wed-1', 'class-muay-thai', 'trainer-1', 3, '16:30', '18:00', 15, 75000, true),
-('sch-wed-2', 'class-mma', 'trainer-2', 3, '19:00', '20:30', 12, 85000, true),
-('sch-thu-1', 'class-boxing', 'trainer-3', 4, '16:30', '18:00', 12, 75000, true),
-('sch-thu-2', 'class-bjj', 'trainer-2', 4, '19:00', '20:30', 14, 80000, true),
-('sch-fri-1', 'class-muay-thai', 'trainer-1', 5, '16:30', '18:00', 15, 75000, true),
-('sch-fri-2', 'class-conditioning', 'trainer-3', 5, '19:00', '20:15', 16, 65000, true),
-('sch-sat-1', 'class-muay-thai', 'trainer-1', 6, '09:00', '10:30', 15, 75000, true),
-('sch-sat-2', 'class-mma', 'trainer-2', 6, '16:00', '17:30', 12, 85000, true)
+-- Sabtu 07.00
+('sch-sat-0700-hyrox', 'class-hyrox', 'trainer-aris', 6, '07:00', '08:15', 16, 75000, true),
+-- 08.30 (Senin - Sabtu)
+('sch-mon-0830-striking', 'class-striking', 'trainer-kevin', 1, '08:30', '09:45', 15, 75000, true),
+('sch-tue-0830-striking', 'class-striking', 'trainer-kevin', 2, '08:30', '09:45', 15, 75000, true),
+('sch-wed-0830-striking', 'class-striking', 'trainer-kevin', 3, '08:30', '09:45', 15, 75000, true),
+('sch-thu-0830-striking', 'class-striking', 'trainer-kevin', 4, '08:30', '09:45', 15, 75000, true),
+('sch-fri-0830-striking', 'class-striking', 'trainer-kevin', 5, '08:30', '09:45', 15, 75000, true),
+('sch-sat-0830-striking', 'class-striking', 'trainer-kevin', 6, '08:30', '09:45', 15, 75000, true),
+-- 10.00 (Senin - Sabtu + Minggu)
+('sch-mon-1000-striking', 'class-striking', 'trainer-kevin', 1, '10:00', '11:15', 15, 75000, true),
+('sch-mon-1000-yoga-if', 'class-yoga-if', 'trainer-sarah', 1, '10:00', '11:15', 12, 70000, true),
+('sch-tue-1000-striking', 'class-striking', 'trainer-kevin', 2, '10:00', '11:15', 15, 75000, true),
+('sch-wed-1000-striking', 'class-striking', 'trainer-kevin', 3, '10:00', '11:15', 15, 75000, true),
+('sch-thu-1000-striking', 'class-striking', 'trainer-kevin', 4, '10:00', '11:15', 15, 75000, true),
+('sch-fri-1000-striking', 'class-striking', 'trainer-kevin', 5, '10:00', '11:15', 15, 75000, true),
+('sch-sat-1000-striking', 'class-striking', 'trainer-kevin', 6, '10:00', '11:15', 15, 75000, true),
+('sch-sun-1000-bjj-kids', 'class-bjj-kids', 'trainer-david', 0, '10:00', '11:15', 12, 65000, true),
+-- 15.00
+('sch-sat-1500-muaykids', 'class-muaykids', 'trainer-kevin', 6, '15:00', '16:00', 12, 65000, true),
+-- 16.00 (Senin - Minggu)
+('sch-mon-1600-striking', 'class-striking', 'trainer-kevin', 1, '16:00', '17:15', 16, 75000, true),
+('sch-tue-1600-striking', 'class-striking', 'trainer-kevin', 2, '16:00', '17:15', 16, 75000, true),
+('sch-wed-1600-striking', 'class-striking', 'trainer-kevin', 3, '16:00', '17:15', 16, 75000, true),
+('sch-thu-1600-striking', 'class-striking', 'trainer-kevin', 4, '16:00', '17:15', 16, 75000, true),
+('sch-fri-1600-striking', 'class-striking', 'trainer-kevin', 5, '16:00', '17:15', 16, 75000, true),
+('sch-sat-1600-striking', 'class-striking', 'trainer-kevin', 6, '16:00', '17:15', 16, 75000, true),
+('sch-sun-1600-striking', 'class-striking', 'trainer-kevin', 0, '16:00', '17:15', 16, 75000, true),
+-- 17.00 (Senin - Sabtu)
+('sch-mon-1700-striking', 'class-striking', 'trainer-kevin', 1, '17:00', '18:15', 16, 75000, true),
+('sch-tue-1700-striking', 'class-striking', 'trainer-kevin', 2, '17:00', '18:15', 16, 75000, true),
+('sch-wed-1700-striking', 'class-striking', 'trainer-kevin', 3, '17:00', '18:15', 16, 75000, true),
+('sch-thu-1700-striking', 'class-striking', 'trainer-kevin', 4, '17:00', '18:15', 16, 75000, true),
+('sch-fri-1700-striking', 'class-striking', 'trainer-kevin', 5, '17:00', '18:15', 16, 75000, true),
+('sch-sat-1700-striking', 'class-striking', 'trainer-kevin', 6, '17:00', '18:15', 16, 75000, true),
+-- 18.30
+('sch-mon-1830-yoga-hatha', 'class-yoga-hatha', 'trainer-sarah', 1, '18:30', '19:45', 14, 70000, true),
+('sch-thu-1830-zumba', 'class-zumba', 'trainer-cindy', 4, '18:30', '19:30', 20, 60000, true),
+('sch-fri-1830-yoga-hatha', 'class-yoga-hatha', 'trainer-sarah', 5, '18:30', '19:45', 14, 70000, true),
+-- 19.00
+('sch-wed-1900-hyrox', 'class-hyrox', 'trainer-aris', 3, '19:00', '20:15', 16, 75000, true),
+-- 20.00
+('sch-mon-2000-bjj', 'class-bjj', 'trainer-david', 1, '20:00', '21:30', 16, 80000, true),
+('sch-mon-2000-hyrox', 'class-hyrox', 'trainer-aris', 1, '20:00', '21:15', 16, 75000, true),
+('sch-wed-2000-bjj', 'class-bjj', 'trainer-david', 3, '20:00', '21:30', 16, 80000, true),
+('sch-fri-2000-bjj', 'class-bjj', 'trainer-david', 5, '20:00', '21:30', 16, 80000, true)
 ON CONFLICT (id) DO NOTHING;
