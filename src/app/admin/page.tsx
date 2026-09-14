@@ -66,7 +66,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const auth = sessionStorage.getItem('11fc_admin_auth');
+      const auth = localStorage.getItem('11fc_admin_auth') || sessionStorage.getItem('11fc_admin_auth');
       if (auth === 'true') {
         setIsAdminLoggedIn(true);
       }
@@ -82,6 +82,7 @@ export default function AdminPage() {
       (u === 'admin11' && (p === 'admin11' || p === 'admin11fightcamp' || p === '11fightcamp' || p === '1111')) ||
       (u === '11fc' && (p === '11fc' || p === '1111'))
     ) {
+      localStorage.setItem('11fc_admin_auth', 'true');
       sessionStorage.setItem('11fc_admin_auth', 'true');
       setIsAdminLoggedIn(true);
       setAuthError('');
@@ -91,6 +92,7 @@ export default function AdminPage() {
   };
 
   const handleAdminLogout = () => {
+    localStorage.removeItem('11fc_admin_auth');
     sessionStorage.removeItem('11fc_admin_auth');
     setIsAdminLoggedIn(false);
     setAdminUsername('');

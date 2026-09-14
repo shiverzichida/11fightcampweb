@@ -91,8 +91,28 @@ function BookingContent() {
     return num.replace(/[^0-9]/g, '').replace(/^0/, '62').replace(/^\+/, '');
   };
 
-  // Load Schedules & Members
+  // Load Schedules & Members with permanent cache hydration
   useEffect(() => {
+    // 1. Instant hydration from localStorage
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('11fc_logged_member_data');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.id) {
+            setAuthenticatedMember(parsed);
+            setBookingType('member');
+            setFullName(parsed.name || '');
+            setPhone(parsed.phone || '');
+            if (parsed.email) setEmail(parsed.email);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    // 2. Fetch fresh database data
     async function load() {
       try {
         setLoading(true);
@@ -110,13 +130,14 @@ function BookingContent() {
           }
         }
 
-        // Auto-fill logged in member session if available
+        // Refresh logged in member data with latest quota from database
         if (typeof window !== 'undefined') {
           const loggedId = localStorage.getItem('11fc_logged_member_id');
           if (loggedId) {
             const found = membersData.find((m) => m.id === loggedId);
             if (found) {
               setAuthenticatedMember(found);
+              localStorage.setItem('11fc_logged_member_data', JSON.stringify(found));
               setBookingType('member');
               setFullName(found.name);
               setPhone(found.phone);
@@ -198,7 +219,14 @@ function BookingContent() {
       return;
     }
 
+    // Permanent caching on verify
     setAuthenticatedMember(found);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('11fc_logged_member_id', found.id);
+      localStorage.setItem('11fc_logged_member_data', JSON.stringify(found));
+      localStorage.setItem('11fc_prefill_name', found.name);
+      localStorage.setItem('11fc_prefill_phone', found.phone);
+    }
     setFullName(found.name);
     setPhone(found.phone);
     if (found.email) setEmail(found.email);

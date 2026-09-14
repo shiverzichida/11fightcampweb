@@ -78,7 +78,7 @@ export default function MemberPortalPage() {
   const [activeMember, setActiveMember] = useState<Member | null>(null);
   const [memberBookings, setMemberBookings] = useState<Booking[]>([]);
 
-  // Load database members & bookings
+  // Load database members & bookings with permanent cache hydration
   const loadData = async () => {
     try {
       setLoading(true);
@@ -96,6 +96,7 @@ export default function MemberPortalPage() {
           const found = membersData.find((m) => m.id === savedId);
           if (found) {
             setActiveMember(found);
+            localStorage.setItem('11fc_logged_member_data', JSON.stringify(found));
             matchMemberBookings(found, bookingsData);
           }
         }
@@ -108,6 +109,21 @@ export default function MemberPortalPage() {
   };
 
   useEffect(() => {
+    // 1. Instant hydration from permanent localStorage cache
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('11fc_logged_member_data');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.id) {
+            setActiveMember(parsed);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    // 2. Fetch fresh updates in background
     loadData();
   }, []);
 
@@ -161,10 +177,11 @@ export default function MemberPortalPage() {
       return;
     }
 
-    // Success login
+    // Permanent login state
     setActiveMember(found);
     if (typeof window !== 'undefined') {
       localStorage.setItem('11fc_logged_member_id', found.id);
+      localStorage.setItem('11fc_logged_member_data', JSON.stringify(found));
       localStorage.setItem('11fc_prefill_name', found.name);
       localStorage.setItem('11fc_prefill_phone', found.phone);
     }
@@ -216,6 +233,7 @@ export default function MemberPortalPage() {
       setActiveMember(newMember);
       if (typeof window !== 'undefined') {
         localStorage.setItem('11fc_logged_member_id', newMember.id);
+        localStorage.setItem('11fc_logged_member_data', JSON.stringify(newMember));
         localStorage.setItem('11fc_prefill_name', newMember.name);
         localStorage.setItem('11fc_prefill_phone', newMember.phone);
       }
@@ -357,6 +375,9 @@ export default function MemberPortalPage() {
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('11fc_logged_member_id');
+      localStorage.removeItem('11fc_logged_member_data');
+      localStorage.removeItem('11fc_prefill_name');
+      localStorage.removeItem('11fc_prefill_phone');
     }
     setActiveMember(null);
     setMemberBookings([]);
