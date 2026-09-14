@@ -30,18 +30,11 @@ export default function Hero() {
 
   return (
     <section className="relative min-h-[92vh] flex flex-col justify-between overflow-hidden bg-black border-b border-zinc-800 w-full">
-      {/* 1. Fullpage MMA Fight Camp Background Image with Next.js Priority LCP Optimization */}
-      <div className="absolute inset-0 transition-transform duration-1000 scale-100 -z-10">
-        <Image
-          src="/hero-full-bg.jpg"
-          alt="11 Fight Camp Pontianak Gym and Cage"
-          fill
-          priority
-          quality={80}
-          sizes="100vw"
-          className="object-cover"
-        />
-      </div>
+      {/* 1. Fullpage MMA Fight Camp Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000 scale-100"
+        style={{ backgroundImage: "url('/hero-full-bg.jpg')" }}
+      />
 
       {/* 2. Cinematic Lighting & Gradient Overlays for High Legibility */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#08090b]/90 via-[#08090b]/50 to-[#08090b]" />
