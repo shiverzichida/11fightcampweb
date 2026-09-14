@@ -1,69 +1,109 @@
-import Image from "next/image";
+import Navbar from '@/components/Navbar';
+import Hero from '@/components/Hero';
+import Programs from '@/components/Programs';
+import ScheduleSection from '@/components/ScheduleSection';
+import Trainers from '@/components/Trainers';
+import Pricing from '@/components/Pricing';
+import LocationSection from '@/components/LocationSection';
+import Footer from '@/components/Footer';
+import { TESTIMONIALS, GYM_INFO } from '@/lib/data';
+import { Star, Quote, ArrowRight, Calendar, MessageSquare } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col selection:bg-rose-600 selection:text-white">
+      <Navbar />
+
+      <Hero />
+
+      <Programs />
+
+      <ScheduleSection />
+
+      <Trainers />
+
+      <Pricing />
+
+      {/* Testimonials Section */}
+      <section className="py-20 bg-[#090a0c] border-b border-zinc-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight">
+              KATA <span className="text-gradient-red">MEMBER KAMI</span>
+            </h2>
+            <p className="mt-2 text-zinc-400 text-sm">
+              Pengalaman nyata member dan atlet yang berlatih di 11 Fight Camp Pontianak.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {TESTIMONIALS.map((t, idx) => (
+              <div
+                key={idx}
+                className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-col justify-between space-y-4 hover:border-zinc-700 transition-colors"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center gap-1 text-amber-400">
+                    {[...Array(t.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-xs sm:text-sm text-zinc-300 italic leading-relaxed">
+                    &ldquo;{t.text}&rdquo;
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-white">{t.name}</h4>
+                    <p className="text-[11px] text-zinc-500">{t.role}</p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-950/70 text-rose-400 border border-rose-900/40">
+                    {t.classTag}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Direct CTA Banner */}
+      <section className="py-16 bg-gradient-to-r from-rose-950/50 via-zinc-950 to-zinc-950 border-b border-zinc-800 relative overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 space-y-6">
+          <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
+            SIAP MULAI TRANSFORMASI FISIK & MENTAL ANDA?
+          </h2>
+          <p className="text-sm sm:text-base text-zinc-300 max-w-2xl mx-auto">
+            Booking sesi perdana Anda hari ini. Sarung tinju dan peralatan dasar dipinjamkan gratis untuk pemula yang baru pertama kali datang!
           </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/booking"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm shadow-xl shadow-rose-900/50 transition-all hover:scale-105"
+            >
+              <Calendar className="w-4 h-4" />
+              BOOKING KELAS SEKARANG
+            </Link>
+            <a
+              href={`https://wa.me/${GYM_INFO.phone.replace('+', '')}?text=${encodeURIComponent(
+                'Halo 11 Fight Camp, saya ingin tanya informasi trial atau coba kelas beladiri.'
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold text-sm border border-zinc-700 transition-all"
+            >
+              <MessageSquare className="w-4 h-4 text-emerald-400" />
+              Tanya Admin via WhatsApp
+            </a>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+
+      <LocationSection />
+
+      <Footer />
+    </main>
   );
 }
