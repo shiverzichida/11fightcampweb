@@ -177,7 +177,7 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-950 transition-all hover:scale-105 active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-fire text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-lg"
             >
               <Plus className="w-4 h-4" />
               Tambah Jadwal Baru
@@ -243,7 +243,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('bookings')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'bookings'
-                ? 'bg-rose-600 text-white'
+                ? 'btn-fire text-white shadow-md'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -253,7 +253,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('schedules')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'schedules'
-                ? 'bg-rose-600 text-white'
+                ? 'btn-fire text-white shadow-md'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -598,7 +598,7 @@ export default function AdminPage() {
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="w-1/2 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-950"
+                    className="w-1/2 py-2.5 rounded-xl btn-fire text-white text-xs font-black shadow-lg"
                   >
                     {isSaving ? 'Menyimpan...' : 'Simpan Jadwal'}
                   </button>

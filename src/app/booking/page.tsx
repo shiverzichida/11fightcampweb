@@ -10,13 +10,9 @@ import { fetchSchedules, createBooking, getBookedSeats } from '@/lib/storage';
 import { GYM_INFO } from '@/lib/data';
 import confetti from 'canvas-confetti';
 import {
-  Calendar as CalendarIcon,
   Clock,
-  User,
-  ShieldCheck,
   CheckCircle2,
   ArrowRight,
-  ArrowLeft,
   Flame,
   MessageSquare,
   AlertCircle,
@@ -36,7 +32,6 @@ function BookingContent() {
   // Date selection (Defaults to tomorrow or today if early)
   const getInitialDate = () => {
     const today = new Date();
-    // If it's Sunday (0), move to Monday
     if (today.getDay() === 0) {
       today.setDate(today.getDate() + 1);
     }
@@ -66,7 +61,6 @@ function BookingContent() {
         const data = await fetchSchedules();
         setSchedules(data);
 
-        // Preselect schedule if parameter exists
         if (preselectedScheduleId) {
           const match = data.find((s) => s.id === preselectedScheduleId);
           if (match) {
@@ -103,10 +97,8 @@ function BookingContent() {
     updateQuotas();
   }, [selectedDate, schedules]);
 
-  // Get day of week from selectedDate
   const currentDayOfWeek = selectedDate ? new Date(selectedDate).getDay() : 1;
 
-  // Filter schedules matching the day of selected date
   const availableSchedules = schedules.filter((s) => {
     if (s.dayOfWeek !== currentDayOfWeek || !s.isActive) return false;
     if (preselectedCategory && preselectedCategory !== 'all') {
@@ -131,19 +123,18 @@ function BookingContent() {
         notes: notes || undefined,
       });
 
-      // Attach schedule info for receipt
       newBooking.scheduleData = selectedSchedule;
       setConfirmedBooking(newBooking);
 
-      // Trigger celebration confetti!
       try {
         confetti({
-          particleCount: 100,
-          spread: 70,
+          particleCount: 110,
+          spread: 80,
+          colors: ['#ba2d1d', '#ea580c', '#f59e0b', '#ffffff'],
           origin: { y: 0.6 },
         });
       } catch {
-        // ignore if not supported
+        // ignore if confetti fails
       }
     } catch (err) {
       console.error('Error submitting booking:', err);
@@ -160,10 +151,9 @@ function BookingContent() {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  // WhatsApp formatted confirmation text
   const waConfirmationUrl = confirmedBooking
     ? `https://wa.me/${GYM_INFO.phone.replace('+', '')}?text=${encodeURIComponent(
-        `Halo 11 Fight Camp Pontianak! Saya telah melakukan booking online tiket kelas bela diri dengan data berikut:
+        `Halo 11th Universe MMA Pontianak! Saya telah melakukan booking online tiket kelas bela diri dengan data berikut:
 
 *Kode Tiket:* ${confirmedBooking.bookingCode}
 *Nama:* ${confirmedBooking.customerName}
@@ -182,16 +172,16 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
       {/* If booking confirmed: Show Receipt / Ticket View */}
       {confirmedBooking ? (
-        <div className="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-800 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 animate-in fade-in zoom-in-95 duration-300">
+        <div className="bg-gradient-to-b from-zinc-900 to-black border-2 border-[#ba2d1d]/80 rounded-3xl p-6 sm:p-10 card-fire space-y-8 animate-in fade-in zoom-in-95 duration-300">
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-9 h-9" />
             </div>
-            <span className="text-xs uppercase tracking-widest font-black text-rose-400">
+            <span className="text-xs uppercase tracking-widest font-black text-[#d63725]">
               Booking Berhasil Dikonfirmasi
             </span>
             <h2 className="text-2xl sm:text-3xl font-black text-white uppercase">
-              TIKET LATIHAN 11 FIGHT CAMP
+              TIKET LATIHAN 11TH UNIVERSE MMA
             </h2>
             <p className="text-xs sm:text-sm text-zinc-400 max-w-md mx-auto">
               Simpan kode tiket Anda dan kirimkan konfirmasi langsung ke admin melalui tombol WhatsApp di bawah ini.
@@ -199,10 +189,9 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
           </div>
 
           {/* Ticket Card */}
-          <div className="bg-[#090a0c] border border-zinc-700/80 rounded-2xl p-6 relative overflow-hidden">
-            {/* Cutout circles for ticket effect */}
-            <div className="hidden sm:block absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-zinc-900 border-r border-zinc-700" />
-            <div className="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-zinc-900 border-l border-zinc-700" />
+          <div className="bg-[#08090b] border border-zinc-800 rounded-2xl p-6 relative overflow-hidden">
+            <div className="hidden sm:block absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-zinc-950 border-r border-zinc-800" />
+            <div className="hidden sm:block absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-zinc-950 border-l border-zinc-800" />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-dashed border-zinc-800">
               <div>
@@ -210,7 +199,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                   Kode Reservasi Unik
                 </span>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-2xl sm:text-3xl font-black text-rose-500 tracking-wider">
+                  <span className="text-2xl sm:text-3xl font-black text-[#d63725] tracking-wider font-mono">
                     {confirmedBooking.bookingCode}
                   </span>
                   <button
@@ -244,7 +233,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               </div>
               <div>
                 <span className="text-zinc-500 block text-[11px]">Program Kelas:</span>
-                <span className="font-bold text-rose-400 text-base">
+                <span className="font-bold text-[#d63725] text-base">
                   {confirmedBooking.scheduleData?.classData?.title || 'Sesi Bela Diri'}
                 </span>
               </div>
@@ -307,17 +296,16 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
       ) : (
         /* Booking Stepper Form */
         <div className="space-y-8">
-          {/* Header */}
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-950/60 border border-rose-800/40 text-rose-400 text-xs font-semibold uppercase tracking-wider">
-              <Flame className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#ba2d1d]/20 border border-[#ba2d1d]/40 text-[#d63725] text-xs font-black uppercase tracking-wider">
+              <Flame className="w-4 h-4 text-[#ea580c] animate-pulse" />
               Reservasi Sesi Latihan
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
               BOOKING JADWAL <span className="text-gradient-red">KELAS</span>
             </h1>
             <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto">
-              Pilih tanggal, amankan kuota slot kelas, dan isi data Anda. Latihan perdana dapat meminjam peralatan secara gratis.
+              Pilih tanggal, amankan kuota slot kelas, dan isi data Anda. Latihan perdana dapat meminjam sarung tinju secara gratis.
             </p>
           </div>
 
@@ -326,12 +314,12 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-black text-white uppercase flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center font-bold">
+                  <span className="w-6 h-6 rounded-full bg-[#ba2d1d] text-white text-xs flex items-center justify-center font-black">
                     1
                   </span>
                   Pilih Tanggal Latihan
                 </h3>
-                <span className="text-xs text-zinc-400">
+                <span className="text-xs text-zinc-400 font-semibold">
                   {currentDayOfWeek === 0
                     ? 'Minggu (Sasana Libur Kelas Reguler)'
                     : `Hari: ${['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][currentDayOfWeek]}`}
@@ -345,15 +333,15 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                   min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => {
                     setSelectedDate(e.target.value);
-                    setSelectedSchedule(null); // Reset selected schedule on date change
+                    setSelectedSchedule(null);
                   }}
-                  className="w-full sm:w-72 px-4 py-3 rounded-xl bg-black/60 border border-zinc-700 text-white font-semibold text-sm focus:outline-none focus:border-rose-500"
+                  className="w-full sm:w-72 px-4 py-3 rounded-xl bg-black/70 border border-zinc-700 text-white font-bold text-sm focus:outline-none focus:border-[#ba2d1d]"
                   required
                 />
               </div>
 
               {currentDayOfWeek === 0 && (
-                <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs flex items-center gap-2">
+                <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   Hari Minggu tidak ada kelas reguler. Silakan pilih hari Senin hingga Sabtu, atau hubungi admin untuk sesi privat khusus.
                 </div>
@@ -364,7 +352,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-black text-white uppercase flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center font-bold">
+                  <span className="w-6 h-6 rounded-full bg-[#ba2d1d] text-white text-xs flex items-center justify-center font-black">
                     2
                   </span>
                   Pilih Sesi Kelas & Instruktur
@@ -392,27 +380,27 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                         onClick={() => setSelectedSchedule(sch)}
                         className={`text-left p-4 rounded-xl border transition-all relative ${
                           isSelected
-                            ? 'bg-rose-950/40 border-rose-500 shadow-lg shadow-rose-950/50'
+                            ? 'bg-zinc-900 border-[#ba2d1d] card-fire'
                             : isSoldOut
                             ? 'bg-zinc-950/40 border-zinc-800/60 opacity-50 cursor-not-allowed'
-                            : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+                            : 'bg-zinc-900 border-zinc-800 card-fire-hover hover:border-zinc-700'
                         }`}
                       >
                         <div className="flex justify-between items-start gap-2">
                           <div>
-                            <span className="text-[10px] uppercase font-bold text-rose-400 tracking-wider">
+                            <span className="text-[10px] uppercase font-black text-[#d63725] tracking-wider">
                               {sch.classData?.category || 'Combat'}
                             </span>
                             <h4 className="text-sm font-black text-white">{sch.classData?.title}</h4>
                           </div>
-                          <span className="text-xs font-black text-amber-400 shrink-0">
+                          <span className="text-xs font-black text-white shrink-0">
                             Rp {sch.price.toLocaleString('id-ID')}
                           </span>
                         </div>
 
                         <div className="mt-3 flex items-center gap-3 text-xs text-zinc-400">
                           <span className="flex items-center gap-1 font-semibold text-zinc-300">
-                            <Clock className="w-3.5 h-3.5 text-amber-400" />
+                            <Clock className="w-3.5 h-3.5 text-[#ea580c]" />
                             {sch.startTime} - {sch.endTime}
                           </span>
                           <span>•</span>
@@ -421,14 +409,14 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
 
                         <div className="mt-3 pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px]">
                           {isSoldOut ? (
-                            <span className="text-rose-400 font-bold">Slot Penuh</span>
+                            <span className="text-red-400 font-bold">Slot Penuh</span>
                           ) : (
                             <span className="text-emerald-400 font-semibold">
                               Tersedia: {remainingSlots} dari {sch.maxCapacity} slot
                             </span>
                           )}
                           {isSelected && (
-                            <span className="px-2 py-0.5 rounded bg-rose-600 text-white font-bold text-[10px]">
+                            <span className="px-2.5 py-0.5 rounded btn-fire text-white font-black text-[10px]">
                               Terpilih
                             </span>
                           )}
@@ -443,7 +431,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
             {/* Step 3: Isi Data Peserta */}
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-6 space-y-4">
               <h3 className="text-base font-black text-white uppercase flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center font-bold">
+                <span className="w-6 h-6 rounded-full bg-[#ba2d1d] text-white text-xs flex items-center justify-center font-black">
                   3
                 </span>
                 Data Diri Peserta
@@ -452,7 +440,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                    Nama Lengkap <span className="text-rose-500">*</span>
+                    Nama Lengkap <span className="text-[#ba2d1d]">*</span>
                   </label>
                   <input
                     type="text"
@@ -460,13 +448,13 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                     placeholder="Contoh: Yoga Pratama"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-rose-500"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
-                    No. WhatsApp Aktif <span className="text-rose-500">*</span>
+                    No. WhatsApp Aktif <span className="text-[#ba2d1d]">*</span>
                   </label>
                   <input
                     type="tel"
@@ -474,7 +462,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                     placeholder="Contoh: 081234567890"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-rose-500"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
                   />
                   <span className="text-[10px] text-zinc-500">Konfirmasi booking akan dikirimkan ke WhatsApp ini.</span>
                 </div>
@@ -488,7 +476,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                     placeholder="nama@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-rose-500"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
                   />
                 </div>
 
@@ -499,7 +487,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                   <select
                     value={experience}
                     onChange={(e) => setExperience(e.target.value as any)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-rose-500"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
                   >
                     <option value="first_time">Pertama Kali Banget (Belum Pernah)</option>
                     <option value="beginner">Pemula (Sudah Pernah Coba 1-3 Kali)</option>
@@ -517,7 +505,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
                     placeholder="Contoh: Mau pinjam sarung tinju, punya riwayat cedera engkel, dll."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-rose-500"
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-sm focus:outline-none focus:border-[#ba2d1d]"
                   />
                 </div>
               </div>
@@ -528,10 +516,10 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               <button
                 type="submit"
                 disabled={isSubmitting || !selectedSchedule}
-                className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl transition-all ${
+                className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-2xl transition-all ${
                   isSubmitting || !selectedSchedule
                     ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white shadow-rose-950 hover:scale-[1.01] active:scale-95'
+                    : 'btn-fire text-white hover:scale-[1.01] active:scale-95'
                 }`}
               >
                 {isSubmitting ? (
@@ -559,7 +547,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
 
 export default function BookingPage() {
   return (
-    <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col selection:bg-rose-600 selection:text-white">
+    <div className="min-h-screen bg-[#08090b] text-zinc-100 flex flex-col selection:bg-[#ba2d1d] selection:text-white">
       <Navbar />
       <main className="flex-1">
         <Suspense fallback={<div className="py-20 text-center text-zinc-500">Memuat formulir booking...</div>}>

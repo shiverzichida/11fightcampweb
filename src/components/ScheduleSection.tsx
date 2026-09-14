@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Calendar, Clock, User, ShieldCheck, ArrowRight, Flame } from 'lucide-react';
+import { Calendar, Clock, User, ArrowRight } from 'lucide-react';
 import { Schedule } from '@/lib/types';
 import { fetchSchedules } from '@/lib/storage';
 
@@ -42,27 +42,27 @@ export default function ScheduleSection() {
     <section id="schedule" className="py-20 bg-carbon border-b border-zinc-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/50 border border-amber-800/40 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
-            <Calendar className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#ba2d1d]/20 border border-[#ba2d1d]/40 text-[#d63725] text-xs font-black uppercase tracking-wider mb-3">
+            <Calendar className="w-3.5 h-3.5 text-[#ea580c]" />
             Jadwal Latihan Mingguan
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
-            TIMETABLE & <span className="text-gradient-gold">JADWAL KELAS</span>
+            TIMETABLE & <span className="text-gradient-red">JADWAL KELAS</span>
           </h2>
           <p className="mt-3 text-zinc-400 text-base">
-            Pilih hari untuk melihat jadwal latihan, instruktur yang bertugas, dan segera amankan slot kelas Anda.
+            Pilih hari untuk melihat jadwal sesi, instruktur yang bertugas, dan segera amankan kuota slot Anda.
           </p>
         </div>
 
         {/* Day Selector Buttons */}
-        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-4 max-w-2xl mx-auto mb-8">
+        <div className="flex items-center justify-center gap-2.5 overflow-x-auto pb-4 max-w-2xl mx-auto mb-8">
           {days.map((d) => (
             <button
               key={d.day}
               onClick={() => setSelectedDay(d.day)}
-              className={`px-5 py-3 rounded-xl font-black text-sm tracking-wide transition-all shrink-0 ${
+              className={`px-6 py-3 rounded-xl font-black text-sm tracking-wide transition-all shrink-0 ${
                 selectedDay === d.day
-                  ? 'bg-gradient-to-r from-rose-600 to-rose-700 text-white shadow-lg shadow-rose-900/40 scale-105'
+                  ? 'btn-fire text-white shadow-xl scale-105'
                   : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
               }`}
             >
@@ -89,14 +89,14 @@ export default function ScheduleSection() {
             {daySchedules.map((sch) => (
               <div
                 key={sch.id}
-                className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 transition-all flex flex-col justify-between space-y-4 hover:shadow-lg hover:shadow-black/60 group"
+                className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 card-fire-hover transition-all flex flex-col justify-between space-y-4 hover:shadow-2xl group"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-rose-950/80 text-rose-400 border border-rose-900/50 mb-1.5">
+                    <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[#ba2d1d]/30 text-[#d63725] border border-[#ba2d1d]/50 mb-1.5">
                       {sch.classData?.category?.toUpperCase() || 'COMBAT'}
                     </span>
-                    <h3 className="text-lg font-black text-white group-hover:text-rose-400 transition-colors">
+                    <h3 className="text-lg font-black text-white group-hover:text-[#d63725] transition-colors">
                       {sch.classData?.title || 'Sesi Latihan'}
                     </h3>
                   </div>
@@ -104,19 +104,19 @@ export default function ScheduleSection() {
                     <span className="text-base font-black text-white">
                       Rp {sch.price.toLocaleString('id-ID')}
                     </span>
-                    <span className="block text-[10px] text-zinc-400">/ sesi drop-in</span>
+                    <span className="block text-[10px] text-zinc-400 font-semibold">/ sesi drop-in</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-zinc-300 pt-2 border-t border-zinc-800/80">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                    <Clock className="w-4 h-4 text-[#ea580c] shrink-0" />
                     <span>
                       {sch.startTime} - {sch.endTime} WIB
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-rose-400 shrink-0" />
+                    <User className="w-4 h-4 text-[#ba2d1d] shrink-0" />
                     <span className="truncate">{sch.trainerData?.name || 'Coach 11FC'}</span>
                   </div>
                 </div>
@@ -127,7 +127,7 @@ export default function ScheduleSection() {
                   </span>
                   <Link
                     href={`/booking?scheduleId=${sch.id}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-950 transition-all hover:scale-105 active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl btn-fire text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-md"
                   >
                     Book Slot
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -141,7 +141,7 @@ export default function ScheduleSection() {
         <div className="mt-12 text-center">
           <Link
             href="/booking"
-            className="inline-flex items-center gap-2 text-sm font-bold text-rose-400 hover:text-rose-300 underline underline-offset-4"
+            className="inline-flex items-center gap-2 text-sm font-black text-[#d63725] hover:text-[#ea580c] underline underline-offset-4 transition-colors"
           >
             Lihat Kalender Booking Lengkap & Pilih Tanggal Sesi
             <ArrowRight className="w-4 h-4" />

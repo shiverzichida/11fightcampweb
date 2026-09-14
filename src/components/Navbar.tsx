@@ -2,46 +2,49 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Flame, Calendar, Shield, Menu, X, Phone, UserCheck } from 'lucide-react';
-import { GYM_INFO } from '@/lib/data';
+import { Calendar, Menu, X, UserCheck } from 'lucide-react';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#090a0c]/90 backdrop-blur-md border-b border-zinc-800/80">
+    <nav className="sticky top-0 z-50 bg-[#08090b]/95 backdrop-blur-md border-b border-zinc-800/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Brand Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-rose-900/40 group-hover:scale-105 transition-transform duration-200">
-              11
+          <Link href="/" className="flex items-center space-x-3.5 group">
+            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#ba2d1d] shadow-lg shadow-[#ba2d1d]/40 group-hover:scale-105 group-hover:shadow-[#ba2d1d]/80 transition-all duration-300">
+              <img
+                src="/logo.png"
+                alt="11th Universe MMA - 11 Fight Camp Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-black tracking-wider text-white uppercase group-hover:text-rose-400 transition-colors">
-                FIGHT CAMP
+              <span className="text-xl font-black tracking-wider text-white uppercase group-hover:text-[#d63725] transition-colors">
+                11TH UNIVERSE
               </span>
-              <span className="text-[10px] tracking-widest text-zinc-400 uppercase font-semibold">
-                Pontianak • Martial Arts
+              <span className="text-[10px] tracking-widest text-[#d63725] uppercase font-extrabold flex items-center gap-1">
+                FIGHT CAMP • PONTIANAK
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8 text-sm font-semibold tracking-wide">
-            <Link href="/#programs" className="text-zinc-300 hover:text-white transition-colors">
+            <Link href="/#programs" className="text-zinc-300 hover:text-[#d63725] transition-colors">
               Program Kelas
             </Link>
-            <Link href="/#schedule" className="text-zinc-300 hover:text-white transition-colors">
+            <Link href="/#schedule" className="text-zinc-300 hover:text-[#d63725] transition-colors">
               Jadwal Mingguan
             </Link>
-            <Link href="/#coaches" className="text-zinc-300 hover:text-white transition-colors">
+            <Link href="/#coaches" className="text-zinc-300 hover:text-[#d63725] transition-colors">
               Pelatih
             </Link>
-            <Link href="/#pricing" className="text-zinc-300 hover:text-white transition-colors">
+            <Link href="/#pricing" className="text-zinc-300 hover:text-[#d63725] transition-colors">
               Membership
             </Link>
-            <Link href="/#location" className="text-zinc-300 hover:text-white transition-colors">
+            <Link href="/#location" className="text-zinc-300 hover:text-[#d63725] transition-colors">
               Lokasi
             </Link>
           </div>
@@ -58,7 +61,7 @@ export default function Navbar() {
 
             <Link
               href="/booking"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm shadow-md shadow-rose-900/30 hover:shadow-rose-900/60 hover:scale-[1.02] active:scale-95 transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-fire text-white font-black text-sm tracking-wide transition-all active:scale-95"
             >
               <Calendar className="w-4 h-4" />
               Booking Kelas
@@ -69,7 +72,7 @@ export default function Navbar() {
           <div className="flex md:hidden items-center space-x-2">
             <Link
               href="/booking"
-              className="px-3.5 py-2 rounded-lg bg-rose-600 text-white font-bold text-xs shadow-md"
+              className="px-3.5 py-2 rounded-xl btn-fire text-white font-black text-xs"
             >
               Booking
             </Link>
@@ -87,39 +90,39 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {isOpen && (
-        <div className="md:hidden border-b border-zinc-800 bg-[#0c0e12] px-4 pt-3 pb-6 space-y-3">
+        <div className="md:hidden border-b border-zinc-800 bg-[#08090b] px-4 pt-3 pb-6 space-y-3">
           <Link
             href="/#programs"
             onClick={() => setIsOpen(false)}
-            className="block py-2 text-base font-semibold text-zinc-300 hover:text-white border-b border-zinc-900"
+            className="block py-2 text-base font-semibold text-zinc-300 hover:text-[#d63725] border-b border-zinc-900"
           >
             Program Kelas
           </Link>
           <Link
             href="/#schedule"
             onClick={() => setIsOpen(false)}
-            className="block py-2 text-base font-semibold text-zinc-300 hover:text-white border-b border-zinc-900"
+            className="block py-2 text-base font-semibold text-zinc-300 hover:text-[#d63725] border-b border-zinc-900"
           >
             Jadwal Mingguan
           </Link>
           <Link
             href="/#coaches"
             onClick={() => setIsOpen(false)}
-            className="block py-2 text-base font-semibold text-zinc-300 hover:text-white border-b border-zinc-900"
+            className="block py-2 text-base font-semibold text-zinc-300 hover:text-[#d63725] border-b border-zinc-900"
           >
             Pelatih (Coaches)
           </Link>
           <Link
             href="/#pricing"
             onClick={() => setIsOpen(false)}
-            className="block py-2 text-base font-semibold text-zinc-300 hover:text-white border-b border-zinc-900"
+            className="block py-2 text-base font-semibold text-zinc-300 hover:text-[#d63725] border-b border-zinc-900"
           >
             Membership & Biaya
           </Link>
           <Link
             href="/#location"
             onClick={() => setIsOpen(false)}
-            className="block py-2 text-base font-semibold text-zinc-300 hover:text-white border-b border-zinc-900"
+            className="block py-2 text-base font-semibold text-zinc-300 hover:text-[#d63725] border-b border-zinc-900"
           >
             Lokasi Sasana
           </Link>
@@ -127,7 +130,7 @@ export default function Navbar() {
             <Link
               href="/booking"
               onClick={() => setIsOpen(false)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl btn-fire text-white font-black text-sm"
             >
               <Calendar className="w-4 h-4" />
               Booking Sesi Sekarang

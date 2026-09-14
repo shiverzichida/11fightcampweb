@@ -70,7 +70,7 @@ export default function Home() {
       </section>
 
       {/* Direct CTA Banner */}
-      <section className="py-16 bg-gradient-to-r from-rose-950/50 via-zinc-950 to-zinc-950 border-b border-zinc-800 relative overflow-hidden">
+      <section className="py-16 bg-gradient-to-r from-[#ba2d1d]/30 via-zinc-950 to-zinc-950 border-b border-zinc-800 relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 space-y-6">
           <h2 className="text-3xl sm:text-4xl font-black text-white uppercase tracking-tight">
             SIAP MULAI TRANSFORMASI FISIK & MENTAL ANDA?
@@ -81,7 +81,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/booking"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm shadow-xl shadow-rose-900/50 transition-all hover:scale-105"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl btn-fire text-white font-black text-sm transition-all hover:scale-105 active:scale-95 shadow-xl"
             >
               <Calendar className="w-4 h-4" />
               BOOKING KELAS SEKARANG

@@ -13,15 +13,15 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Col 1: Brand */}
           <div className="space-y-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-black text-lg text-white shadow-lg">
-                11
+            <div className="flex items-center space-x-3.5">
+              <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-[#ba2d1d] shadow-md shadow-[#ba2d1d]/40 shrink-0">
+                <img src="/logo.png" alt="11th Universe MMA" className="w-full h-full object-cover" />
               </div>
               <div>
                 <span className="text-lg font-black tracking-wider text-white uppercase block">
-                  FIGHT CAMP
+                  11TH UNIVERSE MMA
                 </span>
-                <span className="text-[10px] tracking-widest text-zinc-500 uppercase font-semibold">
+                <span className="text-[10px] tracking-widest text-[#d63725] uppercase font-bold">
                   Pontianak • Combat Club
                 </span>
               </div>
