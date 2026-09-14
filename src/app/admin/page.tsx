@@ -13,6 +13,7 @@ import {
   fetchTrainers,
   fetchMembers,
   saveNewSchedule,
+  updateSchedule,
   deleteSchedule,
   toggleScheduleStatus,
   updateBookingStatus,
@@ -46,6 +47,7 @@ import {
   MinusCircle,
   Lock,
   LogOut,
+  Pencil,
 } from 'lucide-react';
 
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -109,6 +111,17 @@ export default function AdminPage() {
   const [newCapacity, setNewCapacity] = useState<number>(15);
   const [newPrice, setNewPrice] = useState<number>(75000);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Edit Schedule Modal / Form State
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [editClassId, setEditClassId] = useState('');
+  const [editTrainerId, setEditTrainerId] = useState('');
+  const [editDay, setEditDay] = useState<number>(1);
+  const [editStartTime, setEditStartTime] = useState('16:30');
+  const [editEndTime, setEditEndTime] = useState('18:00');
+  const [editCapacity, setEditCapacity] = useState<number>(15);
+  const [editPrice, setEditPrice] = useState<number>(75000);
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
 
   // New Member Modal / Form State
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -185,6 +198,45 @@ export default function AdminPage() {
       alert('Gagal menambah jadwal');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Handle Open Edit Schedule
+  const handleOpenEditSchedule = (sch: Schedule) => {
+    setEditingSchedule(sch);
+    setEditClassId(sch.classId);
+    setEditTrainerId(sch.trainerId);
+    setEditDay(sch.dayOfWeek);
+    setEditStartTime(sch.startTime);
+    setEditEndTime(sch.endTime);
+    setEditCapacity(sch.maxCapacity);
+    setEditPrice(sch.price);
+  };
+
+  // Handle Save Edit Schedule
+  const handleSaveEditSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSchedule || !editClassId || !editTrainerId) return;
+
+    setIsEditingSchedule(true);
+    try {
+      await updateSchedule(editingSchedule.id, {
+        classId: editClassId,
+        trainerId: editTrainerId,
+        dayOfWeek: editDay,
+        startTime: editStartTime,
+        endTime: editEndTime,
+        maxCapacity: Number(editCapacity),
+        price: Number(editPrice),
+      });
+
+      await loadData();
+      setEditingSchedule(null);
+    } catch (err) {
+      console.error(err);
+      alert('Gagal mengupdate jadwal');
+    } finally {
+      setIsEditingSchedule(false);
     }
   };
 
@@ -977,13 +1029,24 @@ export default function AdminPage() {
                       {sch.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                     </button>
 
-                    <button
-                      onClick={() => handleDeleteSchedule(sch.id)}
-                      className="p-2 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
-                      title="Hapus Jadwal"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenEditSchedule(sch)}
+                        className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-bold text-xs flex items-center gap-1.5 transition-colors border border-zinc-700"
+                        title="Edit Jadwal"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteSchedule(sch.id)}
+                        className="p-2 rounded-lg bg-red-950/50 hover:bg-red-900/80 text-red-400 border border-red-900/40"
+                        title="Hapus Jadwal"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1290,6 +1353,156 @@ export default function AdminPage() {
                     className="w-1/2 py-2.5 rounded-xl btn-fire text-white text-xs font-black transition-all"
                   >
                     {isSaving ? 'Menyimpan...' : 'Simpan Jadwal'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: EDIT JADWAL SESI */}
+        {editingSchedule && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Pencil className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-lg font-black text-white uppercase">Edit Jadwal Sesi</h3>
+                </div>
+                <button
+                  onClick={() => setEditingSchedule(null)}
+                  className="p-1 rounded-lg text-zinc-400 hover:text-white"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditSchedule} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                    Pilih Kelas / Disiplin
+                  </label>
+                  <select
+                    value={editClassId}
+                    onChange={(e) => setEditClassId(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-rose-500"
+                    required
+                  >
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title} ({c.category})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                    Pilih Pelatih / Coach
+                  </label>
+                  <select
+                    value={editTrainerId}
+                    onChange={(e) => setEditTrainerId(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-rose-500"
+                    required
+                  >
+                    {trainers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} - {t.role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Hari Latihan
+                    </label>
+                    <select
+                      value={editDay}
+                      onChange={(e) => setEditDay(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-rose-500"
+                    >
+                      <option value={1}>Senin</option>
+                      <option value={2}>Selasa</option>
+                      <option value={3}>Rabu</option>
+                      <option value={4}>Kamis</option>
+                      <option value={5}>Jumat</option>
+                      <option value={6}>Sabtu</option>
+                      <option value={0}>Minggu</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Harga Drop-in (Rp)
+                    </label>
+                    <input
+                      type="number"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-rose-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Jam Mulai
+                    </label>
+                    <input
+                      type="time"
+                      value={editStartTime}
+                      onChange={(e) => setEditStartTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-rose-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Jam Selesai
+                    </label>
+                    <input
+                      type="time"
+                      value={editEndTime}
+                      onChange={(e) => setEditEndTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-rose-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase mb-1">
+                      Kapasitas Maks
+                    </label>
+                    <input
+                      type="number"
+                      value={editCapacity}
+                      onChange={(e) => setEditCapacity(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl bg-black/60 border border-zinc-700 text-white text-xs focus:outline-none focus:border-rose-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingSchedule(null)}
+                    className="w-1/2 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-bold hover:bg-zinc-700"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isEditingSchedule}
+                    className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-black text-xs transition-all"
+                  >
+                    {isEditingSchedule ? 'Menyimpan...' : 'Simpan Perubahan'}
                   </button>
                 </div>
               </form>

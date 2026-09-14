@@ -198,6 +198,44 @@ export async function toggleScheduleStatus(id: string, isActive: boolean): Promi
   return true;
 }
 
+export async function updateSchedule(
+  id: string,
+  updatedData: Partial<Omit<Schedule, 'id' | 'classData' | 'trainerData'>>
+): Promise<boolean> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const payload: any = {};
+      if (updatedData.classId !== undefined) payload.class_id = updatedData.classId;
+      if (updatedData.trainerId !== undefined) payload.trainer_id = updatedData.trainerId;
+      if (updatedData.dayOfWeek !== undefined) payload.day_of_week = updatedData.dayOfWeek;
+      if (updatedData.startTime !== undefined) payload.start_time = updatedData.startTime;
+      if (updatedData.endTime !== undefined) payload.end_time = updatedData.endTime;
+      if (updatedData.maxCapacity !== undefined) payload.max_capacity = updatedData.maxCapacity;
+      if (updatedData.price !== undefined) payload.price = updatedData.price;
+      if (updatedData.isActive !== undefined) payload.is_active = updatedData.isActive;
+
+      const { error } = await supabase
+        .from('schedules')
+        .update(payload)
+        .eq('id', id);
+
+      if (!error) {
+        const current = getLocalItem<Schedule[]>(STORAGE_KEYS.SCHEDULES, INITIAL_SCHEDULES);
+        const updated = current.map((s) => (s.id === id ? { ...s, ...updatedData } : s));
+        setLocalItem(STORAGE_KEYS.SCHEDULES, updated);
+        return true;
+      }
+    } catch (err) {
+      console.warn('Supabase update schedule error:', err);
+    }
+  }
+
+  const current = getLocalItem<Schedule[]>(STORAGE_KEYS.SCHEDULES, INITIAL_SCHEDULES);
+  const updated = current.map((s) => (s.id === id ? { ...s, ...updatedData } : s));
+  setLocalItem(STORAGE_KEYS.SCHEDULES, updated);
+  return true;
+}
+
 // 4. BOOKINGS
 export async function fetchBookings(): Promise<Booking[]> {
   const schedules = await fetchSchedules();
