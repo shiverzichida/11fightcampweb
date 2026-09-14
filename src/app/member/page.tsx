@@ -249,7 +249,7 @@ export default function MemberPortalPage() {
       });
       const data = await resp.json();
 
-      if (data.success || data.token) {
+      if (data.success) {
         if (data.token) {
           setForgotOtpToken(data.token);
         }

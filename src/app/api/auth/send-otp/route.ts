@@ -136,13 +136,19 @@ export async function POST(req: Request) {
 
     if (resendError) {
       console.error('Resend API error:', resendError);
+      
+      // Friendly message explaining Resend sandbox rule
+      let customMsg = resendError.message;
+      if (resendError.message?.includes('testing emails to your own email address')) {
+        customMsg = 'Akun Resend saat ini dalam mode Sandbox (hanya bisa kirim ke email pemilik akun Resend). Verifikasi domain di resend.com/domains untuk kirim ke seluruh email publik, atau gunakan bantuan Admin WhatsApp.';
+      }
+
       return NextResponse.json(
         {
           success: false,
-          message: `Gagal mengirim email (${resendError.message}).`,
-          token, // allow token fallback if sandbox restricts recipient
+          message: customMsg,
         },
-        { status: 200 }
+        { status: 400 }
       );
     }
 
