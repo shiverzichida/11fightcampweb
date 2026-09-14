@@ -134,7 +134,7 @@ export default function Pricing() {
                 }`}
               >
                 {plan.badge && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full btn-fire text-white font-black text-[11px] uppercase tracking-wider shadow-lg">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full btn-fire text-white font-black text-[11px] uppercase tracking-wider">
                     {plan.badge}
                   </div>
                 )}
@@ -166,7 +166,7 @@ export default function Pricing() {
                   {plan.id === 'drop-in' ? (
                     <Link
                       href="/booking"
-                      className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl btn-fire text-white font-black text-xs transition-all active:scale-95 shadow-md"
+                      className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl btn-fire text-white font-black text-xs transition-all active:scale-95"
                     >
                       Booking Sesi Drop-in
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -177,8 +177,8 @@ export default function Pricing() {
                         onClick={() => handleOpenRegister(plan)}
                         className={`w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl font-black text-xs transition-all active:scale-95 ${
                           isPopular
-                            ? 'btn-fire text-white shadow-xl hover:scale-[1.02]'
-                            : 'bg-[#ba2d1d] hover:bg-[#ba2d1d]/90 text-white shadow-md'
+                            ? 'btn-fire text-white hover:scale-[1.02]'
+                            : 'bg-[#ba2d1d] hover:bg-[#ba2d1d]/90 text-white'
                         }`}
                       >
                         <Flame className="w-3.5 h-3.5" />
@@ -317,7 +317,7 @@ export default function Pricing() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95"
+                    className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs transition-all flex items-center justify-center gap-2 active:scale-95"
                   >
                     {isSubmitting ? (
                       'Memproses...'
@@ -431,7 +431,7 @@ export default function Pricing() {
                     href={waProofUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95"
+                    className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all flex items-center justify-center gap-2 active:scale-95"
                   >
                     <MessageSquare className="w-4 h-4" />
                     Kirim Bukti Transfer ke WhatsApp Admin

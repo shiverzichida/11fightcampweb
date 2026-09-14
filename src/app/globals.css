@@ -35,15 +35,22 @@ body {
   background: #ba2d1d;
 }
 
-/* Clean & Solid Combat Theme Buttons and Cards */
+/* Clean & Solid Combat Theme Buttons and Cards (Zero Glowing/Blur Auras) */
 .btn-fire {
   background: #ba2d1d;
   color: #ffffff;
-  transition: all 0.2s ease-in-out;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transition: all 0.15s ease-in-out;
 }
 
 .btn-fire:hover {
   background: #d63725;
+  box-shadow: none !important;
+}
+
+.btn-fire:active {
+  transform: scale(0.98);
 }
 
 .card-fire {

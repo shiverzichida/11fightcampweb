@@ -71,7 +71,7 @@ export default function ScheduleSection() {
                 onClick={() => setSelectedDay(d.day)}
                 className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm tracking-wider transition-all shrink-0 whitespace-nowrap ${
                   selectedDay === d.day
-                    ? 'btn-fire text-white shadow-xl scale-105 ring-2 ring-[#ea580c]/50'
+                    ? 'btn-fire text-white scale-105'
                     : 'bg-zinc-900/90 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
                 }`}
               >
@@ -105,7 +105,7 @@ export default function ScheduleSection() {
             {daySchedules.map((sch) => (
               <div
                 key={sch.id}
-                className="p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800/90 card-fire-hover transition-all flex flex-col justify-between space-y-4 hover:shadow-2xl group w-full"
+                className="p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800/90 card-fire-hover transition-all flex flex-col justify-between space-y-4 group w-full"
               >
                 {/* Class Title & Price */}
                 <div className="flex items-start justify-between gap-3">
@@ -148,7 +148,7 @@ export default function ScheduleSection() {
                   </span>
                   <Link
                     href={`/booking?scheduleId=${sch.id}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl btn-fire text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shadow-md shrink-0"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl btn-fire text-white font-black text-xs transition-all hover:scale-105 active:scale-95 shrink-0"
                   >
                     Book Slot
                     <ArrowRight className="w-3.5 h-3.5" />

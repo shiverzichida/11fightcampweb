@@ -42,14 +42,19 @@ import {
   Award,
   UserPlus,
   Phone,
-  DollarSign,
   Sparkles,
   MinusCircle,
+  Lock,
+  LogOut,
 } from 'lucide-react';
 
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 export default function AdminPage() {
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+
   const [activeTab, setActiveTab] = useState<'bookings' | 'schedules' | 'members'>('bookings');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -57,6 +62,32 @@ export default function AdminPage() {
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const auth = sessionStorage.getItem('11fc_admin_auth');
+      if (auth === 'true') {
+        setIsAdminLoggedIn(true);
+      }
+    }
+  }, []);
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === '1111' || pinInput === 'admin11' || pinInput === '11fc') {
+      sessionStorage.setItem('11fc_admin_auth', 'true');
+      setIsAdminLoggedIn(true);
+      setPinError('');
+    } else {
+      setPinError('PIN Admin salah. Masukkan PIN yang benar (Default: 1111).');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    sessionStorage.removeItem('11fc_admin_auth');
+    setIsAdminLoggedIn(false);
+    setPinInput('');
+  };
 
   // New Schedule Modal / Form State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -324,6 +355,68 @@ export default function AdminPage() {
   const totalRevenue = bookingRevenue + memberRevenue;
   const activeMembersCount = members.filter((m) => m.status === 'active').length;
 
+  // 1. PIN AUTHENTICATION GATE (Prevents direct unauthorized public access)
+  if (!isAdminLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col">
+        <Navbar />
+
+        <main className="flex-1 max-w-md w-full mx-auto px-4 py-16 flex flex-col justify-center items-center">
+          <div className="w-full p-8 rounded-3xl bg-zinc-900/90 border border-zinc-800 text-center space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-[#ba2d1d]/15 border border-[#ba2d1d]/40 flex items-center justify-center mx-auto text-[#ba2d1d]">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#d63725] block">
+                Official Staff Access
+              </span>
+              <h1 className="text-2xl font-black text-white uppercase mt-1">
+                Portal Admin Sasana
+              </h1>
+              <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">
+                Halaman ini dilindungi untuk privasi data member & operasional 11 Fight Camp. Masukkan PIN Admin untuk melanjutkan.
+              </p>
+            </div>
+
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div>
+                <input
+                  type="password"
+                  placeholder="Masukkan 4 Digit PIN Admin"
+                  value={pinInput}
+                  onChange={(e) => {
+                    setPinInput(e.target.value);
+                    if (pinError) setPinError('');
+                  }}
+                  className="w-full px-4 py-3.5 rounded-xl bg-black/70 border border-zinc-700 text-white text-center text-lg tracking-widest font-mono focus:outline-none focus:border-[#ba2d1d]"
+                  autoFocus
+                  required
+                />
+                {pinError && (
+                  <p className="text-xs text-rose-400 font-bold mt-2">{pinError}</p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3.5 rounded-xl btn-fire text-white font-black text-xs uppercase tracking-wider transition-all"
+              >
+                Buka Panel Admin
+              </button>
+            </form>
+
+            <div className="pt-2 border-t border-zinc-800 text-[11px] text-zinc-500">
+              Default PIN Admin: <span className="font-mono text-zinc-400 font-bold">1111</span>
+            </div>
+          </div>
+        </main>
+
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#090a0c] text-zinc-100 flex flex-col">
       <Navbar />
@@ -350,25 +443,26 @@ export default function AdminPage() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setShowAddMemberModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all active:scale-95 shadow-md"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all active:scale-95"
             >
               <UserPlus className="w-4 h-4" />
               + Registrasi Member
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ba2d1d] hover:bg-[#d63725] text-white font-black text-xs transition-all active:scale-95 shadow-md"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ba2d1d] hover:bg-[#d63725] text-white font-black text-xs transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" />
               Tambah Jadwal
             </button>
-            <Link
-              href="/booking"
-              target="_blank"
-              className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold text-xs transition-colors"
+            <button
+              onClick={handleAdminLogout}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-white font-bold text-xs transition-colors"
+              title="Keluar Admin"
             >
-              Tampilan Booking
-            </Link>
+              <LogOut className="w-4 h-4 text-zinc-400" />
+              Logout
+            </button>
           </div>
         </div>
 
@@ -423,7 +517,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('bookings')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'bookings'
-                ? 'bg-[#ba2d1d] text-white shadow-md'
+                ? 'bg-[#ba2d1d] text-white'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -433,7 +527,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('members')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'members'
-                ? 'bg-[#ba2d1d] text-white shadow-md'
+                ? 'bg-[#ba2d1d] text-white'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -443,7 +537,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('schedules')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
               activeTab === 'schedules'
-                ? 'bg-[#ba2d1d] text-white shadow-md'
+                ? 'bg-[#ba2d1d] text-white'
                 : 'bg-zinc-900 text-zinc-400 hover:text-white'
             }`}
           >
@@ -574,7 +668,7 @@ export default function AdminPage() {
                               {b.status !== 'attended' && (
                                 <button
                                   onClick={() => handleUpdateStatus(b, 'attended')}
-                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-colors"
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 transition-colors"
                                   title="Tandai Hadir (Check-in)"
                                 >
                                   <CheckCircle className="w-3.5 h-3.5" />
@@ -769,7 +863,7 @@ export default function AdminPage() {
                             {m.paymentStatus === 'pending' && (
                               <button
                                 onClick={() => handleConfirmMemberPayment(m.id)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm flex items-center gap-1 transition-colors"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 transition-colors"
                                 title="Konfirmasi Pembayaran Lunas"
                               >
                                 <Check className="w-3.5 h-3.5" />
@@ -1009,7 +1103,7 @@ export default function AdminPage() {
                   <button
                     type="submit"
                     disabled={isSavingMember}
-                    className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg"
+                    className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-all"
                   >
                     {isSavingMember ? 'Menyimpan...' : 'Simpan & Aktifkan'}
                   </button>
@@ -1156,7 +1250,7 @@ export default function AdminPage() {
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="w-1/2 py-2.5 rounded-xl btn-fire text-white text-xs font-black shadow-lg"
+                    className="w-1/2 py-2.5 rounded-xl btn-fire text-white text-xs font-black transition-all"
                   >
                     {isSaving ? 'Menyimpan...' : 'Simpan Jadwal'}
                   </button>

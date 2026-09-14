@@ -13,7 +13,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-20">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center space-x-3.5 group">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#ba2d1d] shadow-lg shadow-[#ba2d1d]/40 group-hover:scale-105 group-hover:shadow-[#ba2d1d]/80 transition-all duration-300">
+            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-[#ba2d1d] group-hover:scale-105 transition-all duration-300">
               <img
                 src="/logo.png"
                 alt="11th Universe MMA - 11 Fight Camp Logo"
@@ -52,11 +52,11 @@ export default function Navbar() {
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-3">
             <Link
-              href="/admin"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-zinc-900 border border-zinc-700/60 text-zinc-300 hover:text-white hover:border-zinc-500 transition-all"
+              href="/member"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-zinc-900 border border-zinc-700/80 text-zinc-200 hover:text-white hover:border-[#ba2d1d] hover:bg-zinc-800 transition-all"
             >
-              <UserCheck className="w-3.5 h-3.5 text-zinc-400" />
-              Admin Portal
+              <UserCheck className="w-3.5 h-3.5 text-[#ba2d1d]" />
+              Member Portal
             </Link>
 
             <Link
@@ -70,6 +70,12 @@ export default function Navbar() {
 
           {/* Mobile menu button */}
           <div className="flex md:hidden items-center space-x-2">
+            <Link
+              href="/member"
+              className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 font-bold text-xs"
+            >
+              Member
+            </Link>
             <Link
               href="/booking"
               className="px-3.5 py-2 rounded-xl btn-fire text-white font-black text-xs"
@@ -136,12 +142,12 @@ export default function Navbar() {
               Booking Sesi Sekarang
             </Link>
             <Link
-              href="/admin"
+              href="/member"
               onClick={() => setIsOpen(false)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 font-semibold text-xs"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-200 font-bold text-xs"
             >
-              <UserCheck className="w-4 h-4" />
-              Portal Admin
+              <UserCheck className="w-4 h-4 text-[#ba2d1d]" />
+              Member Portal (Cek Kuota & Status)
             </Link>
           </div>
         </div>

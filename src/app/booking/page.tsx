@@ -265,7 +265,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               href={waConfirmationUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center gap-3 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-xl shadow-emerald-950 transition-all hover:scale-[1.01]"
+              className="w-full inline-flex items-center justify-center gap-3 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition-all hover:scale-[1.01]"
             >
               <MessageSquare className="w-5 h-5" />
               KIRIM TIKET KE WHATSAPP ADMIN (+62 881-8124-824)
@@ -506,7 +506,7 @@ Mohon konfirmasi dan informasi persiapan latihan ya Coach. Terima kasih!`
               <button
                 type="submit"
                 disabled={isSubmitting || !selectedSchedule}
-                className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-2xl transition-all ${
+                className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
                   isSubmitting || !selectedSchedule
                     ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
                     : 'btn-fire text-white hover:scale-[1.01] active:scale-95'

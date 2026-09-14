@@ -81,7 +81,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/booking"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl btn-fire text-white font-black text-sm transition-all hover:scale-105 active:scale-95 shadow-xl"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl btn-fire text-white font-black text-sm transition-all hover:scale-105 active:scale-95"
             >
               <Calendar className="w-4 h-4" />
               BOOKING KELAS SEKARANG
